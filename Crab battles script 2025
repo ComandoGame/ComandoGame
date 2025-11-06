@@ -1,0 +1,355 @@
+-- MOD MENU FARM PRO v55 — PÁGINAS EM DESENVOLVIMENTO
+-- FUNCIONA EM: Krnl, Fluxus, Synapse X, Delta, Arceus X
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local LocalPlayer = Players.LocalPlayer
+local Camera = Workspace.CurrentCamera
+local Mouse = LocalPlayer:GetMouse()
+
+-- === RAYFIELD ===
+local Rayfield = loadstring(game:HttpGet("https://sirius.menu/rayfield"))()
+
+-- === JANELA ===
+local Window = Rayfield:CreateWindow({
+    Name = "Farm Pro v55 — GOLD",
+    LoadingTitle = "Carregando...",
+    LoadingSubtitle = "Páginas em Update + ESP Fix",
+    ConfigurationSaving = { Enabled = false },
+    KeySystem = false
+})
+
+-- === ABAS ===
+local FarmTab = Window:CreateTab("Farm", 1334675577)
+local GrabTab = Window:CreateTab("Auto Grab", 1334675577)
+local SpeedTab = Window:CreateTab("Speed & Jump", 1334675577)
+local LavaTab = Window:CreateTab("TP Lava", 1334675577)
+local CombatTab = Window:CreateTab("Combate", 1334675577)
+local StatsTab = Window:CreateTab("Stats", 1334675577)
+local VisualTab = Window:CreateTab("Visual", 1334675577)
+local ProtectionTab = Window:CreateTab("Proteção", 1334675577)
+
+-- === VARIÁVEIS GLOBAIS ===
+local AutoTpEnabled = false
+local TargetPlayer = nil
+local TpPosition = "Acima"
+local TpHeight = 8
+local RealHRP = nil
+local CurrentTargetLabel = nil
+
+-- === SPEED & JUMP PRO ===
+local SpeedEnabled = false
+local JumpEnabled = false
+local CustomSpeed = 50
+local CustomJump = 50
+local DefaultSpeed = 16
+local DefaultJump = 50
+local SpeedLabel = nil
+local JumpLabel = nil
+
+-- === ESP FIXADO ===
+local ESPEnabled = false
+local ESPObjects = {}
+
+local function Notify(t, c, d) Rayfield:Notify({Title=t, Content=c, Duration=d or 3}) end
+
+-- === ENCONTRA MAIS PRÓXIMO VIVO ===
+local function GetClosestAlivePlayer()
+    local closest = nil
+    local closestDist = math.huge
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return nil end
+
+    for _, p in Players:GetPlayers() do
+        if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChildOfClass("Humanoid") then
+            if p.Character.Humanoid.Health > 0 then
+                local dist = (p.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+                if dist < closestDist then
+                    closest = p
+                    closestDist = dist
+                end
+            end
+        end
+    end
+    return closest
+end
+
+-- === AUTO TP (INDEPENDENTE) ===
+RunService.Heartbeat:Connect(function()
+    if not AutoTpEnabled then return end
+    local char = LocalPlayer.Character
+    if not char or not char:FindFirstChild("HumanoidRootPart") then return end
+    RealHRP = char.HumanoidRootPart
+
+    if not TargetPlayer or not TargetPlayer.Character or TargetPlayer.Character.Humanoid.Health <= 0 then
+        TargetPlayer = GetClosestAlivePlayer()
+        if TargetPlayer then
+            CurrentTargetLabel:Set("Alvo TP: " .. TargetPlayer.DisplayName)
+        else
+            CurrentTargetLabel:Set("Nenhum vivo")
+        end
+    end
+
+    if TargetPlayer and TargetPlayer.Character and TargetPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        local pos = TargetPlayer.Character.HumanoidRootPart.Position
+        if TpPosition == "Acima" then
+            pos = pos + Vector3.new(0, TpHeight, 0)
+        elseif TpPosition == "Atrás" then
+            pos = pos - TargetPlayer.Character.HumanoidRootPart.CFrame.LookVector * 5
+            pos = pos + Vector3.new(0, TpHeight, 0)
+        end
+        RealHRP.CFrame = CFrame.new(pos)
+    end
+end)
+
+-- === SPEED & JUMP PRO (ANTI-RESET) ===
+RunService.Heartbeat:Connect(function()
+    local char = LocalPlayer.Character
+    if not char then return end
+    local hum = char:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+
+    if SpeedEnabled then
+        hum.WalkSpeed = CustomSpeed
+        if SpeedLabel then SpeedLabel:Set("Velocidade: " .. CustomSpeed) end
+    end
+
+    if JumpEnabled then
+        hum.JumpPower = CustomJump
+        if JumpLabel then JumpLabel:Set("Jump: " .. CustomJump) end
+    end
+end)
+
+-- === ESP FIXADO: 100% ATUALIZAÇÃO ===
+local function CreateESP(p)
+    if ESPObjects[p] or not p.Character then return end
+
+    local box = Instance.new("BoxHandleAdornment")
+    box.Size = Vector3.new(4, 6, 4)
+    box.Color3 = Color3.fromRGB(255, 0, 0)
+    box.Transparency = 0.5
+    box.Adornee = p.Character
+    box.AlwaysOnTop = true
+    box.ZIndex = 10
+    box.Parent = Workspace
+
+    local gui = Instance.new("BillboardGui")
+    gui.Size = UDim2.new(0, 200, 0, 60)
+    gui.Adornee = p.Character:FindFirstChild("Head")
+    gui.AlwaysOnTop = true
+    gui.Parent = Workspace
+
+    local nameLabel = Instance.new("TextLabel", gui)
+    nameLabel.Size = UDim2.new(1, 0, 0, 20)
+    nameLabel.Text = p.DisplayName
+    nameLabel.TextColor3 = Color3.new(1, 0, 0)
+    nameLabel.Font = Enum.Font.GothamBold
+    nameLabel.BackgroundTransparency = 1
+
+    local distLabel = Instance.new("TextLabel", gui)
+    distLabel.Size = UDim2.new(1, 0, 0, 15)
+    distLabel.Position = UDim2.new(0, 0, 0, 20)
+    distLabel.TextColor3 = Color3.new(1, 1, 0)
+    distLabel.BackgroundTransparency = 1
+
+    local healthLabel = Instance.new("TextLabel", gui)
+    healthLabel.Size = UDim2.new(1, 0, 0, 15)
+    healthLabel.Position = UDim2.new(0, 0, 0, 35)
+    healthLabel.TextColor3 = Color3.new(0, 1, 0)
+    healthLabel.BackgroundTransparency = 1
+
+    local healthBar = Instance.new("Frame", gui)
+    healthBar.Size = UDim2.new(1, 0, 0, 8)
+    healthBar.Position = UDim2.new(0, 0, 1, -10)
+    healthBar.BackgroundColor3 = Color3.new(0, 0, 0)
+
+    local fill = Instance.new("Frame", healthBar)
+    fill.Size = UDim2.new(1, 0, 1, 0)
+    fill.BackgroundColor3 = Color3.new(0, 1, 0)
+
+    ESPObjects[p] = {Box=box, Gui=gui, Name=nameLabel, Dist=distLabel, Health=healthLabel, Fill=fill}
+end
+
+local function RemoveESP(p)
+    if not ESPObjects[p] then return end
+    for _, v in pairs(ESPObjects[p]) do if v and v.Parent then v:Destroy() end end
+    ESPObjects[p] = nil
+end
+
+RunService.Heartbeat:Connect(function()
+    if not ESPEnabled then return end
+    local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not hrp then return end
+
+    for _, p in Players:GetPlayers() do
+        if p ~= LocalPlayer then
+            if p.Character and p.Character:FindFirstChild("HumanoidRootPart") and p.Character:FindFirstChild("Head") then
+                local hum = p.Character:FindFirstChildOfClass("Humanoid")
+                if hum and hum.Health > 0 then
+                    if not ESPObjects[p] then CreateESP(p) end
+                    if ESPObjects[p] then
+                        local esp = ESPObjects[p]
+                        local targetHRP = p.Character.HumanoidRootPart
+                        local dist = (targetHRP.Position - hrp.Position).Magnitude
+                        esp.Dist.Text = string.format("%.1f studs", dist)
+                        esp.Health.Text = string.format("%d/%d HP", hum.Health, hum.MaxHealth)
+                        local pct = hum.Health / hum.MaxHealth
+                        esp.Fill.Size = UDim2.new(pct, 0, 1, 0)
+                        esp.Fill.BackgroundColor3 = Color3.fromHSV(0.33 * pct, 1, 1)
+                        esp.Gui.Adornee = p.Character.Head
+                        esp.Box.Adornee = p.Character
+                    end
+                else
+                    RemoveESP(p)
+                end
+            else
+                RemoveESP(p)
+            end
+        end
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(p) RemoveESP(p) end)
+
+-- === UI: FARM (AUTO TP) ===
+CurrentTargetLabel = FarmTab:CreateLabel("Alvo TP: Nenhum")
+
+FarmTab:CreateSection("Auto Teleport")
+
+FarmTab:CreateToggle({
+    Name = "Auto TP (Mais Próximo)",
+    CurrentValue = false,
+    Callback = function(val)
+        AutoTpEnabled = val
+        if val then TargetPlayer = nil CurrentTargetLabel:Set("Procurando...") end
+    end
+})
+
+FarmTab:CreateDropdown({
+    Name = "Posição",
+    Options = {"Acima", "Atrás"},
+    CurrentOption = "Acima",
+    Callback = function(v) TpPosition = v end
+})
+
+FarmTab:CreateSlider({
+    Name = "Altura (studs)",
+    Range = {1, 15},
+    Increment = 1,
+    CurrentValue = 8,
+    Callback = function(v) TpHeight = v end
+})
+
+-- === UI: AUTO GRAB (EM UPDATE) ===
+GrabTab:CreateSection("Status")
+GrabTab:CreateLabel("EM UPDATE...")
+GrabTab:CreateLabel("Em breve: Click + E + Lançar")
+
+-- === UI: SPEED & JUMP PRO ===
+SpeedTab:CreateSection("Velocidade")
+
+SpeedTab:CreateToggle({
+    Name = "Ativar Velocidade Custom",
+    CurrentValue = false,
+    Callback = function(val) SpeedEnabled = val end
+})
+
+SpeedTab:CreateSlider({
+    Name = "Velocidade",
+    Range = {16, 200},
+    Increment = 1,
+    CurrentValue = 50,
+    Callback = function(v) CustomSpeed = v end
+})
+
+SpeedLabel = SpeedTab:CreateLabel("Velocidade: 50")
+
+SpeedTab:CreateSection("Jump")
+
+SpeedTab:CreateToggle({
+    Name = "Ativar Jump Custom",
+    CurrentValue = false,
+    Callback = function(val) JumpEnabled = val end
+})
+
+SpeedTab:CreateSlider({
+    Name = "Jump Power",
+    Range = {50, 300},
+    Increment = 5,
+    CurrentValue = 50,
+    Callback = function(v) CustomJump = v end
+})
+
+JumpLabel = SpeedTab:CreateLabel("Jump: 50")
+
+SpeedTab:CreateButton({
+    Name = "Resetar para Normal",
+    Callback = function()
+        SpeedEnabled = false
+        JumpEnabled = false
+        local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+        if hum then
+            hum.WalkSpeed = DefaultSpeed
+            hum.JumpPower = DefaultJump
+        end
+        SpeedLabel:Set("Velocidade: " .. DefaultSpeed)
+        JumpLabel:Set("Jump: " .. DefaultJump)
+        Notify("RESETADO", "Velocidade & Jump normais", 3)
+    end
+})
+
+-- === UI: TP LAVA (EM UPDATE) ===
+LavaTab:CreateSection("Status")
+LavaTab:CreateLabel("EM UPDATE...")
+LavaTab:CreateLabel("Em breve: Lava + Grab + Auto Kill")
+
+-- === UI: COMBATE — EM DESENVOLVIMENTO ===
+CombatTab:CreateSection("Status")
+CombatTab:CreateLabel("EM DESENVOLVIMENTO")
+CombatTab:CreateLabel("Aguarde no próximo Update...")
+
+-- === UI: STATS — EM DESENVOLVIMENTO ===
+StatsTab:CreateSection("Status")
+StatsTab:CreateLabel("EM DESENVOLVIMENTO")
+StatsTab:CreateLabel("Aguarde no próximo Update...")
+
+-- === UI: VISUAL — ESP PRO ===
+VisualTab:CreateSection("ESP Pro")
+
+VisualTab:CreateToggle({
+    Name = "ESP Pro (Atualiza em Tempo Real)",
+    CurrentValue = false,
+    Callback = function(val)
+        ESPEnabled = val
+        if not val then
+            for p in pairs(ESPObjects) do RemoveESP(p) end
+        end
+    end
+})
+
+-- === UI: PROTEÇÃO — EM DESENVOLVIMENTO ===
+ProtectionTab:CreateSection("Status")
+ProtectionTab:CreateLabel("EM DESENVOLVIMENTO")
+ProtectionTab:CreateLabel("Aguarde no próximo Update...")
+
+-- === RESPAWN & LIMPEZA ===
+LocalPlayer.CharacterAdded:Connect(function()
+    task.wait(2)
+    if AutoTpEnabled then TargetPlayer = nil end
+    task.wait(1)
+    local hum = LocalPlayer.Character and LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then
+        if SpeedEnabled then hum.WalkSpeed = CustomSpeed end
+        if JumpEnabled then hum.JumpPower = CustomJump end
+    end
+end)
+
+Players.PlayerRemoving:Connect(function(p)
+    if TargetPlayer == p then TargetPlayer = nil end
+    RemoveESP(p)
+end)
+
+-- === NOTIFICAÇÃO FINAL ===
+Notify("FARM PRO v55", "PÁGINAS EM UPDATE + ESP 100% FIXADO!", 6)
