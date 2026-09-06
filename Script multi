@@ -1,0 +1,1 @@
+loadstring(game:HttpGet("https://gist.githubusercontent.com/ComandoGame/bcdff22c629db9a8807164c5b8878d72/raw/script.lua"))()
