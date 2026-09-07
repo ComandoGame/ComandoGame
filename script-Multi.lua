@@ -1,4 +1,4 @@
--- Menu Multi-Jogos - Mk_gaming (Quantum Onyx em Manutenção)
+-- Menu Multi-Jogos - Mk_gaming (Quantum Onyx Liberado)
 -- Detecta o jogo atual e libera apenas os scripts compatíveis
 
 local player = game.Players.LocalPlayer
@@ -151,17 +151,14 @@ end
 -- ============================================
 local scripts = {
     -- ===== BLOX FRUITS (14 SCRIPTS) =====
-    -- QUANTUM ONYX - EM MANUTENÇÃO
+    -- QUANTUM ONYX - LIBERADO (manutenção removida)
     { 
         id = 1, 
         name = "Quantum Onyx", 
         game = "Blox Fruits",
         key = false, 
-        desc = "🔧 EM MANUTENÇÃO - Aguarde",
-        load = function()
-            showMaintenanceNotice("Quantum Onyx")
-        end,
-        isMaintenance = true  -- Marca como em manutenção
+        desc = "Hub completo • Atualizado",
+        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/QuantumOnyx.lua"))()' 
     },
     { 
         id = 2, 
@@ -281,11 +278,8 @@ local scripts = {
         name = "Quantum Onyx (Dungeon)", 
         game = "Blox Fruits (Masmorras)",
         key = false, 
-        desc = "🔧 EM MANUTENÇÃO - Aguarde",
-        load = function()
-            showMaintenanceNotice("Quantum Onyx (Dungeon)")
-        end,
-        isMaintenance = true
+        desc = "Hub completo • Atualizado",
+        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/QuantumOnyx.lua"))()' 
     },
     
     -- ===== BLITZ (UNIVERSAL) =====
@@ -615,13 +609,8 @@ for i, data in ipairs(scripts) do
     row.Size = UDim2.new(1, -4, 0, 34)
     row.Position = UDim2.new(0, 0, 0, (i-1) * 38)
     
-    -- Marcar scripts em manutenção
-    if data.isMaintenance then
-        row.BackgroundColor3 = Color3.fromRGB(80, 60, 30)
-        row.BackgroundTransparency = 0.2
-        row.BorderColor3 = Color3.fromRGB(255, 200, 50)
-        row.BorderSizePixel = 2
-    elseif data.id == 13 then
+    -- Knockback Battles (id 13) - mostrar como em update
+    if data.id == 13 then
         row.BackgroundColor3 = Color3.fromRGB(80, 60, 30)
         row.BackgroundTransparency = 0.2
         row.BorderColor3 = Color3.fromRGB(255, 200, 50)
@@ -654,11 +643,7 @@ for i, data in ipairs(scripts) do
     cb.BackgroundTransparency = 0.3
     cb.BorderSizePixel = 1
     
-    if data.isMaintenance then
-        cb.BorderColor3 = Color3.fromRGB(255, 200, 50)
-        cb.Text = "🔧"
-        cb.TextColor3 = Color3.fromRGB(255, 200, 50)
-    elseif data.id == 13 then
+    if data.id == 13 then
         cb.BorderColor3 = Color3.fromRGB(255, 200, 50)
         cb.Text = "🔒"
         cb.TextColor3 = Color3.fromRGB(255, 200, 50)
@@ -683,9 +668,9 @@ for i, data in ipairs(scripts) do
     cbCorner.Parent = cb
 
     botoesCheck[data.id] = cb
-    linhas[data.id] = {row = row, corBase = row.BackgroundColor3, isAvailable = isAvailable, isMaintenance = data.isMaintenance}
+    linhas[data.id] = {row = row, corBase = row.BackgroundColor3, isAvailable = isAvailable}
 
-    if isAvailable and data.id ~= 13 and not data.isMaintenance then
+    if isAvailable and data.id ~= 13 then
         cb.MouseButton1Click:Connect(function()
             local idx = table.find(selecionados, data.id)
             if idx then
@@ -698,12 +683,12 @@ for i, data in ipairs(scripts) do
                 for _, id in ipairs(selecionados) do
                     local cb2 = botoesCheck[id]
                     local row2 = linhas[id]
-                    if cb2 and row2 and row2.isAvailable and not row2.isMaintenance then
+                    if cb2 and row2 and row2.isAvailable then
                         cb2.Text = "☐"
                         cb2.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
                         cb2.BorderColor3 = Color3.fromRGB(200, 150, 255)
                     end
-                    if row2 and row2.row and row2.isAvailable and not row2.isMaintenance then
+                    if row2 and row2.row and row2.isAvailable then
                         row2.row.BackgroundColor3 = row2.corBase
                     end
                 end
@@ -728,16 +713,6 @@ for i, data in ipairs(scripts) do
                 }
             end)
         end)
-    else
-        -- Scripts em manutenção ou bloqueados mostram aviso ao clicar
-        cb.MouseButton1Click:Connect(function()
-            if data.isMaintenance then
-                showMaintenanceNotice(data.name)
-            elseif data.id == 13 then
-                -- Já mostra o aviso de update
-                data.load()
-            end
-        end)
     end
     
     -- Nome
@@ -746,9 +721,7 @@ for i, data in ipairs(scripts) do
     nameLbl.Position = UDim2.new(0, 30, 0, 2)
     nameLbl.BackgroundTransparency = 1
     nameLbl.Text = data.name
-    if data.isMaintenance then
-        nameLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
-    elseif data.id == 13 then
+    if data.id == 13 then
         nameLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
     elseif data.id == 18 then
         nameLbl.TextColor3 = Color3.fromRGB(100, 255, 100)
@@ -765,10 +738,7 @@ for i, data in ipairs(scripts) do
     gameScriptLbl.Size = UDim2.new(0, 80, 0, 14)
     gameScriptLbl.Position = UDim2.new(0, 30, 0, 18)
     gameScriptLbl.BackgroundTransparency = 1
-    if data.isMaintenance then
-        gameScriptLbl.Text = "🔧 MANUTENÇÃO"
-        gameScriptLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
-    elseif data.id == 13 then
+    if data.id == 13 then
         gameScriptLbl.Text = "🔄 EM UPDATE"
         gameScriptLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
     elseif data.id == 18 then
@@ -789,10 +759,7 @@ for i, data in ipairs(scripts) do
     descLbl.Size = UDim2.new(0, 120, 0, 14)
     descLbl.Position = UDim2.new(0, 115, 0, 18)
     descLbl.BackgroundTransparency = 1
-    if data.isMaintenance then
-        descLbl.Text = "⏳ Aguarde atualização..."
-        descLbl.TextColor3 = Color3.fromRGB(255, 200, 100)
-    elseif data.id == 13 then
+    if data.id == 13 then
         descLbl.Text = "🔧 Atualizando script..."
         descLbl.TextColor3 = Color3.fromRGB(255, 200, 100)
     elseif data.id == 18 then
@@ -814,9 +781,7 @@ for i, data in ipairs(scripts) do
     keyLbl.Position = UDim2.new(1, -30, 0, 0)
     keyLbl.BackgroundTransparency = 1
     keyLbl.Text = data.key and "🔑" or "✓"
-    if data.isMaintenance then
-        keyLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
-    elseif data.id == 13 then
+    if data.id == 13 then
         keyLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
     elseif data.id == 18 then
         keyLbl.TextColor3 = Color3.fromRGB(100, 255, 100)
@@ -828,15 +793,12 @@ for i, data in ipairs(scripts) do
     keyLbl.Parent = row
 
     -- Indicador de bloqueio / update / dungeon
-    if not isAvailable or data.isMaintenance or data.id == 13 then
+    if not isAvailable or data.id == 13 then
         local lockLbl = Instance.new("TextLabel")
         lockLbl.Size = UDim2.new(0, 60, 1, 0)
         lockLbl.Position = UDim2.new(1, -90, 0, 0)
         lockLbl.BackgroundTransparency = 1
-        if data.isMaintenance then
-            lockLbl.Text = "🔧 MANUTENÇÃO"
-            lockLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
-        elseif data.id == 13 then
+        if data.id == 13 then
             lockLbl.Text = "🔄 UPDATE"
             lockLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
         elseif data.id == 18 then
@@ -995,12 +957,6 @@ local function executeSelectedScript()
         return false
     end
     
-    -- Verifica se está em manutenção
-    if scriptData.isMaintenance then
-        showMaintenanceNotice(scriptData.name)
-        return false
-    end
-    
     local isAvailable = false
     for _, avail in ipairs(availableScripts) do
         if avail.id == scriptData.id then
@@ -1065,13 +1021,6 @@ local function startAutoCountdown()
     end
     
     if not scriptData then
-        autoRunning = false
-        return false
-    end
-    
-    -- Verifica se está em manutenção
-    if scriptData.isMaintenance then
-        showMaintenanceNotice(scriptData.name)
         autoRunning = false
         return false
     end
@@ -1146,20 +1095,7 @@ autoBtn.MouseButton1Click:Connect(function()
         end
         
         if #selecionados > 0 then
-            -- Verifica se o script selecionado está em manutenção
-            local scriptId = selecionados[1]
-            local scriptData = nil
-            for _, s in ipairs(scripts) do
-                if s.id == scriptId then
-                    scriptData = s
-                    break
-                end
-            end
-            if scriptData and scriptData.isMaintenance then
-                showMaintenanceNotice(scriptData.name)
-            else
-                startAutoCountdown()
-            end
+            startAutoCountdown()
         end
     else
         autoBtn.Text = "🔁 AUTO: OFF"
@@ -1231,12 +1167,6 @@ end)
 local executando = false
 
 local function runScript(scriptData)
-    -- Verifica se está em manutenção
-    if scriptData.isMaintenance then
-        showMaintenanceNotice(scriptData.name)
-        return
-    end
-    
     local isAvailable = false
     for _, avail in ipairs(availableScripts) do
         if avail.id == scriptData.id then
@@ -1280,20 +1210,6 @@ execBtn.MouseButton1Click:Connect(function()
         return
     end
     
-    -- Verifica se o script selecionado está em manutenção
-    local scriptId = selecionados[1]
-    local scriptData = nil
-    for _, s in ipairs(scripts) do
-        if s.id == scriptId then
-            scriptData = s
-            break
-        end
-    end
-    if scriptData and scriptData.isMaintenance then
-        showMaintenanceNotice(scriptData.name)
-        return
-    end
-    
     autoRunning = false
     if autoTimerThread then
         coroutine.close(autoTimerThread)
@@ -1330,9 +1246,6 @@ execBtn.MouseButton1Click:Connect(function()
                         statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
                     end
                     wait(0.5)
-                elseif data.isMaintenance then
-                    showMaintenanceNotice(data.name)
-                    blockedCount = blockedCount + 1
                 else
                     atual = atual + 1
                     if statusLabel and statusLabel.Parent then
@@ -1347,7 +1260,7 @@ execBtn.MouseButton1Click:Connect(function()
     
     if statusLabel and statusLabel.Parent then
         if blockedCount > 0 then
-            statusLabel.Text = "✅ Concluído! (" .. blockedCount .. " bloqueados/manutenção)"
+            statusLabel.Text = "✅ Concluído! (" .. blockedCount .. " bloqueados)"
         else
             statusLabel.Text = "✅ Concluído!"
         end
@@ -1453,19 +1366,7 @@ end)
 -- INICIAR AUTO EXECUTE SE JÁ ESTIVER ATIVO
 -- ============================================
 if savedData.autoEnabled and #selecionados > 0 then
-    local scriptId = selecionados[1]
-    local scriptData = nil
-    for _, s in ipairs(scripts) do
-        if s.id == scriptId then
-            scriptData = s
-            break
-        end
-    end
-    if scriptData and scriptData.isMaintenance then
-        showMaintenanceNotice(scriptData.name)
-    else
-        startAutoCountdown()
-    end
+    startAutoCountdown()
 end
 
 print("✅ Menu Multi-Jogos carregado! (Mk_gaming)")
