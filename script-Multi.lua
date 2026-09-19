@@ -1,4 +1,4 @@
--- Menu Multi-Jogos - Mk_gaming (Quantum Onyx em Manutenção)
+-- Menu Multi-Jogos - Mk_gaming (Completo - CentuDox PvP Adicionado)
 -- Detecta o jogo atual e libera apenas os scripts compatíveis
 
 local player = game.Players.LocalPlayer
@@ -12,7 +12,6 @@ local function detectGame()
     local gameId = game.PlaceId
     local gameName = game:GetService("MarketplaceService"):GetProductInfo(game.PlaceId).Name or "Desconhecido"
     
-    -- Lista de IDs de jogos conhecidos
     local games = {
         -- Blox Fruits (TODOS OS MARES)
         [2753915549] = "Blox Fruits",
@@ -56,15 +55,15 @@ local currentGame = detectGame()
 -- ============================================
 -- FUNÇÃO PARA MOSTRAR AVISO DE MANUTENÇÃO
 -- ============================================
-local function showMaintenanceNotice(scriptName)
+local function showMaintenanceNotice(scriptName, reason)
     local gui = Instance.new("ScreenGui")
     gui.Name = "MaintenanceNotice"
     gui.ResetOnSpawn = false
     gui.Parent = player.PlayerGui
     
     local frame = Instance.new("Frame")
-    frame.Size = UDim2.new(0, 400, 0, 180)
-    frame.Position = UDim2.new(0.5, -200, 0.5, -90)
+    frame.Size = UDim2.new(0, 400, 0, 200)
+    frame.Position = UDim2.new(0.5, -200, 0.5, -100)
     frame.BackgroundColor3 = Color3.fromRGB(20, 10, 30)
     frame.BackgroundTransparency = 0.1
     frame.BorderSizePixel = 2
@@ -75,18 +74,16 @@ local function showMaintenanceNotice(scriptName)
     corner.CornerRadius = UDim.new(0, 16)
     corner.Parent = frame
     
-    -- Ícone
     local icon = Instance.new("TextLabel")
     icon.Size = UDim2.new(0, 60, 0, 60)
     icon.Position = UDim2.new(0.5, -30, 0, 10)
     icon.BackgroundTransparency = 1
-    icon.Text = "🔧"
+    icon.Text = reason and "⚠️" or "🔧"
     icon.TextColor3 = Color3.fromRGB(255, 200, 50)
     icon.TextScaled = true
     icon.Font = Enum.Font.GothamBold
     icon.Parent = frame
     
-    -- Título
     local title = Instance.new("TextLabel")
     title.Size = UDim2.new(1, -40, 0, 30)
     title.Position = UDim2.new(0, 20, 0, 75)
@@ -97,21 +94,32 @@ local function showMaintenanceNotice(scriptName)
     title.Font = Enum.Font.GothamBold
     title.Parent = frame
     
-    -- Mensagem
     local msg = Instance.new("TextLabel")
     msg.Size = UDim2.new(1, -40, 0, 25)
     msg.Position = UDim2.new(0, 20, 0, 110)
     msg.BackgroundTransparency = 1
-    msg.Text = "🔄 " .. scriptName .. " está sendo atualizado."
+    msg.Text = "🔄 " .. scriptName .. " está em manutenção."
     msg.TextColor3 = Color3.fromRGB(255, 255, 255)
     msg.TextScaled = true
     msg.Font = Enum.Font.Gotham
     msg.Parent = frame
     
-    -- Submensagem
+    if reason then
+        local reasonLabel = Instance.new("TextLabel")
+        reasonLabel.Size = UDim2.new(1, -40, 0, 25)
+        reasonLabel.Position = UDim2.new(0, 20, 0, 138)
+        reasonLabel.BackgroundTransparency = 1
+        reasonLabel.Text = reason
+        reasonLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
+        reasonLabel.TextScaled = true
+        reasonLabel.Font = Enum.Font.Gotham
+        reasonLabel.TextSize = 10
+        reasonLabel.Parent = frame
+    end
+    
     local msg2 = Instance.new("TextLabel")
     msg2.Size = UDim2.new(1, -40, 0, 20)
-    msg2.Position = UDim2.new(0, 20, 0, 138)
+    msg2.Position = UDim2.new(0, 20, 0, reason and 168 or 140)
     msg2.BackgroundTransparency = 1
     msg2.Text = "⏳ Em breve estará disponível novamente."
     msg2.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -120,10 +128,9 @@ local function showMaintenanceNotice(scriptName)
     msg2.TextSize = 10
     msg2.Parent = frame
     
-    -- Botão Fechar
     local closeBtn = Instance.new("TextButton")
     closeBtn.Size = UDim2.new(0, 100, 0, 30)
-    closeBtn.Position = UDim2.new(0.5, -50, 0, 145)
+    closeBtn.Position = UDim2.new(0.5, -50, 0, reason and 200 or 165)
     closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     closeBtn.BackgroundTransparency = 0.2
     closeBtn.BorderSizePixel = 1
@@ -141,7 +148,6 @@ local function showMaintenanceNotice(scriptName)
         gui:Destroy()
     end)
     
-    -- Auto-fecha após 5 segundos
     task.wait(5)
     gui:Destroy()
 end
@@ -150,18 +156,14 @@ end
 -- LISTA DE SCRIPTS POR JOGO
 -- ============================================
 local scripts = {
-    -- ===== BLOX FRUITS (14 SCRIPTS) =====
-    -- QUANTUM ONYX - EM MANUTENÇÃO
+    -- ===== BLOX FRUITS (10 SCRIPTS) =====
     { 
         id = 1, 
         name = "Quantum Onyx", 
         game = "Blox Fruits",
         key = false, 
-        desc = "🔧 EM MANUTENÇÃO - Aguarde",
-        load = function()
-            showMaintenanceNotice("Quantum Onyx")
-        end,
-        isMaintenance = true  -- Marca como em manutenção
+        desc = "✅ Atualizado • Sistema de Key",
+        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/QuantumOnyx.lua"))()' 
     },
     { 
         id = 2, 
@@ -196,50 +198,12 @@ local scripts = {
         load = 'loadstring(game:HttpGet("https://pastebin.com/raw/abHni44D"))()' 
     },
     { 
-        id = 6, 
-        name = "Draco Hub", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "Hub Completo",
-        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/RealRyx/MainDraco/refs/heads/main/DracoMain.lua"))()' 
-    },
-    { 
         id = 7, 
         name = "Neva Hub", 
         game = "Blox Fruits",
         key = false, 
         desc = "Auto Farm • Magnet",
         load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/VEZ2/NEVAHUB/main/2"))()' 
-    },
-    { 
-        id = 8, 
-        name = "Esmerald Hub", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "Alternativo • Sem Key",
-        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/bloxfruitsnokey/Redz/refs/heads/main/Emerald/script.luau"))()' 
-    },
-    { 
-        id = 9, 
-        name = "Star Hub", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "Leve • Seguro 2026",
-        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/bloxfruitsnokey/Stellar/refs/heads/main/Star/script.luau"))()' 
-    },
-    { 
-        id = 10, 
-        name = "Hinishi Hub", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "Auto Farm Level • Leve",
-        load = function()
-            local Settings = {
-                JoinTeam = "Marines";
-                Translator = true;
-            }
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/Dev-Hinishi/Hinishi-Hub/refs/heads/main/Freemium.lua"))(Settings)
-        end
     },
     { 
         id = 14, 
@@ -277,15 +241,41 @@ local scripts = {
         load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/UCT-hub/main/refs/heads/main/redz-v2"))()' 
     },
     { 
+        id = 19, 
+        name = "Tsuo Hub", 
+        game = "Blox Fruits",
+        key = false, 
+        desc = "⚠️ PESADO - Instabilidade FPS",
+        load = function()
+            showMaintenanceNotice("Tsuo Hub", "⚠️ Script pesado causa instabilidade de FPS e travamentos.")
+        end,
+        isMaintenance = true
+    },
+    { 
+        id = 20, 
+        name = "Ruby Hub", 
+        game = "Blox Fruits",
+        key = false, 
+        desc = "Auto Farm • Sem Key",
+        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/bloxfruitsnokey/Redz/refs/heads/main/Ruby/script.lua"))()' 
+    },
+    -- CENTUDOX PVP - NOVO
+    { 
+        id = 21, 
+        name = "CentuDox PvP", 
+        game = "Blox Fruits",
+        key = false, 
+        desc = "⚔️ Bounty • PvP • Sem Key",
+        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/JustParadozCode/CentuDox-Hub/refs/heads/main/CentuDox-Pvp.xyz"))()' 
+    },
+    -- Quantum Onyx (Dungeon) - ATUALIZADO
+    { 
         id = 18, 
         name = "Quantum Onyx (Dungeon)", 
         game = "Blox Fruits (Masmorras)",
         key = false, 
-        desc = "🔧 EM MANUTENÇÃO - Aguarde",
-        load = function()
-            showMaintenanceNotice("Quantum Onyx (Dungeon)")
-        end,
-        isMaintenance = true
+        desc = "✅ Atualizado • Único que funciona",
+        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/QuantumOnyx.lua"))()' 
     },
     
     -- ===== BLITZ (UNIVERSAL) =====
@@ -591,7 +581,7 @@ end)
 -- ÁREA DE SCRIPTS
 -- ============================================
 local scriptArea = Instance.new("ScrollingFrame")
-scriptArea.Size = UDim2.new(1, -16, 0, 260)
+scriptArea.Size = UDim2.new(1, -16, 0, 255)
 scriptArea.Position = UDim2.new(0, 8, 0, 120)
 scriptArea.BackgroundTransparency = 1
 scriptArea.ScrollBarThickness = 4
@@ -615,7 +605,6 @@ for i, data in ipairs(scripts) do
     row.Size = UDim2.new(1, -4, 0, 34)
     row.Position = UDim2.new(0, 0, 0, (i-1) * 38)
     
-    -- Marcar scripts em manutenção
     if data.isMaintenance then
         row.BackgroundColor3 = Color3.fromRGB(80, 60, 30)
         row.BackgroundTransparency = 0.2
@@ -646,7 +635,6 @@ for i, data in ipairs(scripts) do
     rowCorner.CornerRadius = UDim.new(0, 6)
     rowCorner.Parent = row
 
-    -- Checkbox
     local cb = Instance.new("TextButton")
     cb.Size = UDim2.new(0, 20, 1, -4)
     cb.Position = UDim2.new(0, 4, 0, 2)
@@ -729,18 +717,15 @@ for i, data in ipairs(scripts) do
             end)
         end)
     else
-        -- Scripts em manutenção ou bloqueados mostram aviso ao clicar
         cb.MouseButton1Click:Connect(function()
             if data.isMaintenance then
-                showMaintenanceNotice(data.name)
+                data.load()
             elseif data.id == 13 then
-                -- Já mostra o aviso de update
                 data.load()
             end
         end)
     end
     
-    -- Nome
     local nameLbl = Instance.new("TextLabel")
     nameLbl.Size = UDim2.new(0, 130, 0, 16)
     nameLbl.Position = UDim2.new(0, 30, 0, 2)
@@ -760,7 +745,6 @@ for i, data in ipairs(scripts) do
     nameLbl.TextXAlignment = Enum.TextXAlignment.Left
     nameLbl.Parent = row
 
-    -- Jogo do Script
     local gameScriptLbl = Instance.new("TextLabel")
     gameScriptLbl.Size = UDim2.new(0, 80, 0, 14)
     gameScriptLbl.Position = UDim2.new(0, 30, 0, 18)
@@ -784,7 +768,6 @@ for i, data in ipairs(scripts) do
     gameScriptLbl.TextXAlignment = Enum.TextXAlignment.Left
     gameScriptLbl.Parent = row
 
-    -- Descrição
     local descLbl = Instance.new("TextLabel")
     descLbl.Size = UDim2.new(0, 120, 0, 14)
     descLbl.Position = UDim2.new(0, 115, 0, 18)
@@ -796,7 +779,7 @@ for i, data in ipairs(scripts) do
         descLbl.Text = "🔧 Atualizando script..."
         descLbl.TextColor3 = Color3.fromRGB(255, 200, 100)
     elseif data.id == 18 then
-        descLbl.Text = "✅ Único que funciona em masmorras"
+        descLbl.Text = "✅ Atualizado • Único que funciona"
         descLbl.TextColor3 = Color3.fromRGB(100, 255, 100)
     else
         descLbl.Text = data.desc
@@ -808,7 +791,6 @@ for i, data in ipairs(scripts) do
     descLbl.TextXAlignment = Enum.TextXAlignment.Left
     descLbl.Parent = row
 
-    -- Key
     local keyLbl = Instance.new("TextLabel")
     keyLbl.Size = UDim2.new(0, 25, 1, 0)
     keyLbl.Position = UDim2.new(1, -30, 0, 0)
@@ -827,7 +809,6 @@ for i, data in ipairs(scripts) do
     keyLbl.Font = Enum.Font.Gotham
     keyLbl.Parent = row
 
-    -- Indicador de bloqueio / update / dungeon
     if not isAvailable or data.isMaintenance or data.id == 13 then
         local lockLbl = Instance.new("TextLabel")
         lockLbl.Size = UDim2.new(0, 60, 1, 0)
@@ -860,7 +841,7 @@ scriptArea.CanvasSize = UDim2.new(0, 0, 0, #scripts * 38 + 10)
 -- ============================================
 local btnFrame = Instance.new("Frame")
 btnFrame.Size = UDim2.new(1, -16, 0, 35)
-btnFrame.Position = UDim2.new(0, 8, 0, 388)
+btnFrame.Position = UDim2.new(0, 8, 0, 383)
 btnFrame.BackgroundTransparency = 1
 btnFrame.Parent = frame
 
@@ -912,12 +893,9 @@ local clearCorner = Instance.new("UICorner")
 clearCorner.CornerRadius = UDim.new(0, 8)
 clearCorner.Parent = clearBtn
 
--- ============================================
--- BOTÃO AUTO EXECUTE
--- ============================================
 local autoFrame = Instance.new("Frame")
 autoFrame.Size = UDim2.new(1, -16, 0, 35)
-autoFrame.Position = UDim2.new(0, 8, 0, 428)
+autoFrame.Position = UDim2.new(0, 8, 0, 423)
 autoFrame.BackgroundTransparency = 1
 autoFrame.Parent = frame
 
@@ -937,12 +915,9 @@ local autoCorner = Instance.new("UICorner")
 autoCorner.CornerRadius = UDim.new(0, 8)
 autoCorner.Parent = autoBtn
 
--- ============================================
--- STATUS LABEL
--- ============================================
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(1, -16, 0, 22)
-statusLabel.Position = UDim2.new(0, 8, 0, 470)
+statusLabel.Position = UDim2.new(0, 8, 0, 463)
 statusLabel.BackgroundColor3 = Color3.fromRGB(150, 50, 255)
 statusLabel.BackgroundTransparency = 0.85
 statusLabel.BorderSizePixel = 1
@@ -956,9 +931,6 @@ local statusCorner = Instance.new("UICorner")
 statusCorner.CornerRadius = UDim.new(0, 8)
 statusCorner.Parent = statusLabel
 
--- ============================================
--- RODAPÉ
--- ============================================
 local footer = Instance.new("TextLabel")
 footer.Size = UDim2.new(1, 0, 0, 16)
 footer.Position = UDim2.new(0, 0, 1, -18)
@@ -995,9 +967,8 @@ local function executeSelectedScript()
         return false
     end
     
-    -- Verifica se está em manutenção
     if scriptData.isMaintenance then
-        showMaintenanceNotice(scriptData.name)
+        scriptData.load()
         return false
     end
     
@@ -1069,9 +1040,8 @@ local function startAutoCountdown()
         return false
     end
     
-    -- Verifica se está em manutenção
     if scriptData.isMaintenance then
-        showMaintenanceNotice(scriptData.name)
+        scriptData.load()
         autoRunning = false
         return false
     end
@@ -1130,9 +1100,6 @@ local function startAutoCountdown()
     return true
 end
 
--- ============================================
--- EVENTO DO BOTÃO AUTO EXECUTE
--- ============================================
 autoBtn.MouseButton1Click:Connect(function()
     savedData.autoEnabled = not savedData.autoEnabled
     
@@ -1146,7 +1113,6 @@ autoBtn.MouseButton1Click:Connect(function()
         end
         
         if #selecionados > 0 then
-            -- Verifica se o script selecionado está em manutenção
             local scriptId = selecionados[1]
             local scriptData = nil
             for _, s in ipairs(scripts) do
@@ -1156,7 +1122,7 @@ autoBtn.MouseButton1Click:Connect(function()
                 end
             end
             if scriptData and scriptData.isMaintenance then
-                showMaintenanceNotice(scriptData.name)
+                scriptData.load()
             else
                 startAutoCountdown()
             end
@@ -1184,9 +1150,6 @@ autoBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- ============================================
--- FUNÇÃO LIMPAR
--- ============================================
 clearBtn.MouseButton1Click:Connect(function()
     autoRunning = false
     if autoTimerThread then
@@ -1225,15 +1188,11 @@ clearBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
--- ============================================
--- FUNÇÃO DE EXECUÇÃO MANUAL
--- ============================================
 local executando = false
 
 local function runScript(scriptData)
-    -- Verifica se está em manutenção
     if scriptData.isMaintenance then
-        showMaintenanceNotice(scriptData.name)
+        scriptData.load()
         return
     end
     
@@ -1280,7 +1239,6 @@ execBtn.MouseButton1Click:Connect(function()
         return
     end
     
-    -- Verifica se o script selecionado está em manutenção
     local scriptId = selecionados[1]
     local scriptData = nil
     for _, s in ipairs(scripts) do
@@ -1290,7 +1248,7 @@ execBtn.MouseButton1Click:Connect(function()
         end
     end
     if scriptData and scriptData.isMaintenance then
-        showMaintenanceNotice(scriptData.name)
+        scriptData.load()
         return
     end
     
@@ -1331,7 +1289,7 @@ execBtn.MouseButton1Click:Connect(function()
                     end
                     wait(0.5)
                 elseif data.isMaintenance then
-                    showMaintenanceNotice(data.name)
+                    data.load()
                     blockedCount = blockedCount + 1
                 else
                     atual = atual + 1
@@ -1360,9 +1318,6 @@ execBtn.MouseButton1Click:Connect(function()
     if gui then gui:Destroy() end
 end)
 
--- ============================================
--- BOTÃO HUNT HUB
--- ============================================
 huntBtn.MouseButton1Click:Connect(function()
     if executando then
         if statusLabel and statusLabel.Parent then
@@ -1449,9 +1404,6 @@ huntBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- ============================================
--- INICIAR AUTO EXECUTE SE JÁ ESTIVER ATIVO
--- ============================================
 if savedData.autoEnabled and #selecionados > 0 then
     local scriptId = selecionados[1]
     local scriptData = nil
@@ -1462,7 +1414,7 @@ if savedData.autoEnabled and #selecionados > 0 then
         end
     end
     if scriptData and scriptData.isMaintenance then
-        showMaintenanceNotice(scriptData.name)
+        scriptData.load()
     else
         startAutoCountdown()
     end
