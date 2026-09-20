@@ -191,11 +191,11 @@ local scripts = {
     },
     { 
         id = 5, 
-        name = "Hunt Hub 2026", 
+        name = "Hunt Hub", 
         game = "Blox Fruits",
-        key = true, 
-        desc = "Comandgame • Premium",
-        load = 'loadstring(game:HttpGet("https://pastebin.com/raw/abHni44D"))()' 
+        key = false, 
+        desc = "ComandoGame • Atualizado",
+        load = 'loadstring(game:HttpGet("https://github.com/ComandoGame/ComandoGame/raw/ComandoGame/Hunt%20hub.lua"))()' 
     },
     { 
         id = 7, 
