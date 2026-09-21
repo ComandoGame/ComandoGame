@@ -1,4 +1,4 @@
--- Menu Multi-Jogos - Mk_gaming (Responsivo Mobile + Hunt Hub Atualizado)
+-- Menu Multi-Jogos - Mk_gaming (Adaptado para Mobile)
 -- Detecta o jogo atual e libera apenas os scripts compatíveis
 
 local player = game.Players.LocalPlayer
@@ -11,11 +11,25 @@ repeat wait() until game:IsLoaded()
 local UserInputService = game:GetService("UserInputService")
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
--- Configurações de tamanho adaptáveis
-local MENU_WIDTH = isMobile and 340 or 420
-local MENU_HEIGHT = isMobile and 480 or 620
-local ROW_HEIGHT = isMobile and 30 or 34
-local ROW_SPACING = isMobile and 34 or 38
+-- ============================================
+-- ADAPTAR TAMANHO À TELA DO DISPOSITIVO
+-- ============================================
+local camera = workspace.CurrentCamera
+local viewportSize = camera.ViewportSize
+local screenW = viewportSize.X
+local screenH = viewportSize.Y
+
+-- Calcula tamanho baseado na tela (nunca maior que 95% da tela)
+local MENU_WIDTH = isMobile 
+    and math.clamp(screenW * 0.92, 280, 380) 
+    or 420
+local MENU_HEIGHT = isMobile 
+    and math.clamp(screenH * 0.75, 380, 560) 
+    or 620
+
+-- Tamanhos de linha adaptáveis (menores no mobile)
+local ROW_HEIGHT = isMobile and math.clamp(MENU_HEIGHT * 0.075, 34, 44) or 38
+local ROW_SPACING = ROW_HEIGHT + (isMobile and 4 or 6)
 
 -- ============================================
 -- DETECTOR DE JOGO
@@ -69,8 +83,8 @@ local function showMaintenanceNotice(scriptName, reason)
     noticeGui.ResetOnSpawn = false
     noticeGui.Parent = player.PlayerGui
     
-    local noticeWidth = isMobile and 300 or 400
-    local noticeHeight = isMobile and 170 or 200
+    local noticeWidth = isMobile and math.clamp(screenW * 0.8, 260, 320) or 400
+    local noticeHeight = isMobile and math.clamp(screenH * 0.25, 140, 180) or 200
     
     local noticeFrame = Instance.new("Frame")
     noticeFrame.Size = UDim2.new(0, noticeWidth, 0, noticeHeight)
@@ -86,8 +100,8 @@ local function showMaintenanceNotice(scriptName, reason)
     noticeCorner.Parent = noticeFrame
     
     local noticeIcon = Instance.new("TextLabel")
-    noticeIcon.Size = UDim2.new(0, 50, 0, 50)
-    noticeIcon.Position = UDim2.new(0.5, -25, 0, 10)
+    noticeIcon.Size = UDim2.new(0, 40, 0, 40)
+    noticeIcon.Position = UDim2.new(0.5, -20, 0, 8)
     noticeIcon.BackgroundTransparency = 1
     noticeIcon.Text = reason and "⚠️" or "🔧"
     noticeIcon.TextColor3 = Color3.fromRGB(255, 200, 50)
@@ -96,8 +110,8 @@ local function showMaintenanceNotice(scriptName, reason)
     noticeIcon.Parent = noticeFrame
     
     local noticeTitle = Instance.new("TextLabel")
-    noticeTitle.Size = UDim2.new(1, -40, 0, 25)
-    noticeTitle.Position = UDim2.new(0, 20, 0, 65)
+    noticeTitle.Size = UDim2.new(1, -30, 0, 22)
+    noticeTitle.Position = UDim2.new(0, 15, 0, 52)
     noticeTitle.BackgroundTransparency = 1
     noticeTitle.Text = "⚠️ SCRIPT EM MANUTENÇÃO"
     noticeTitle.TextColor3 = Color3.fromRGB(255, 200, 50)
@@ -106,8 +120,8 @@ local function showMaintenanceNotice(scriptName, reason)
     noticeTitle.Parent = noticeFrame
     
     local noticeMsg = Instance.new("TextLabel")
-    noticeMsg.Size = UDim2.new(1, -40, 0, 22)
-    noticeMsg.Position = UDim2.new(0, 20, 0, 95)
+    noticeMsg.Size = UDim2.new(1, -30, 0, 20)
+    noticeMsg.Position = UDim2.new(0, 15, 0, 78)
     noticeMsg.BackgroundTransparency = 1
     noticeMsg.Text = "🔄 " .. scriptName .. " está em manutenção."
     noticeMsg.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -117,8 +131,8 @@ local function showMaintenanceNotice(scriptName, reason)
     
     if reason then
         local reasonLabel = Instance.new("TextLabel")
-        reasonLabel.Size = UDim2.new(1, -40, 0, 22)
-        reasonLabel.Position = UDim2.new(0, 20, 0, 118)
+        reasonLabel.Size = UDim2.new(1, -30, 0, 20)
+        reasonLabel.Position = UDim2.new(0, 15, 0, 100)
         reasonLabel.BackgroundTransparency = 1
         reasonLabel.Text = reason
         reasonLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
@@ -129,7 +143,7 @@ local function showMaintenanceNotice(scriptName, reason)
     
     local noticeClose = Instance.new("TextButton")
     noticeClose.Size = UDim2.new(0, 100, 0, 28)
-    noticeClose.Position = UDim2.new(0.5, -50, 1, -38)
+    noticeClose.Position = UDim2.new(0.5, -50, 1, -36)
     noticeClose.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     noticeClose.BackgroundTransparency = 0.2
     noticeClose.BorderSizePixel = 1
@@ -149,11 +163,13 @@ local function showMaintenanceNotice(scriptName, reason)
     end)
     
     task.wait(5)
-    noticeGui:Destroy()
+    if noticeGui and noticeGui.Parent then
+        noticeGui:Destroy()
+    end
 end
 
 -- ============================================
--- LISTA DE SCRIPTS POR JOGO
+-- LISTA DE SCRIPTS (mantida igual)
 -- ============================================
 local scripts = {
     -- ===== BLOX FRUITS =====
@@ -162,7 +178,7 @@ local scripts = {
         name = "Quantum Onyx", 
         game = "Blox Fruits",
         key = false, 
-        desc = "✅ Atualizado • Sistema de Key",
+        desc = "✅ Atualizado • Key",
         load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/QuantumOnyx.lua"))()' 
     },
     { 
@@ -178,7 +194,7 @@ local scripts = {
         name = "Speed Hub X", 
         game = "Blox Fruits",
         key = false, 
-        desc = "ESP • Speed Hack • PvP",
+        desc = "ESP • Speed • PvP",
         load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/AhmadV99/Speed-Hub-X/main/Speed%20Hub%20X.lua"))()' 
     },
     { 
@@ -186,7 +202,7 @@ local scripts = {
         name = "Cokka Hub", 
         game = "Blox Fruits",
         key = true, 
-        desc = "Mobile Hack • Auto Farm",
+        desc = "Mobile • Auto Farm",
         load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/UserDevEthical/Loadstring/main/CokkaHub.lua"))()' 
     },
     { 
@@ -196,7 +212,7 @@ local scripts = {
         key = false, 
         desc = "ComandoGame • Atualizado",
         load = 'loadstring(game:HttpGet("https://github.com/ComandoGame/ComandoGame/raw/ComandoGame/Hunt%20hub.lua"))()',
-        autoClose = true  -- Fecha o menu após executar
+        autoClose = true
     },
     { 
         id = 7, 
@@ -222,7 +238,7 @@ local scripts = {
         name = "Night Hub", 
         game = "Blox Fruits",
         key = false, 
-        desc = "Auto Farm • Hop Script",
+        desc = "Auto Farm • Hop",
         load = 'loadstring(game:HttpGet("https://github.com/WhiteX1208/Scripts/blob/main/HopScript.luau?raw=true"))()' 
     },
     { 
@@ -230,7 +246,7 @@ local scripts = {
         name = "Teddy Hub", 
         game = "Blox Fruits",
         key = false, 
-        desc = "Auto Farm • Auto Quest",
+        desc = "Auto Farm • Quest",
         load = 'repeat task.wait() until game:IsLoaded() and game:GetService("Players") and game.Players.LocalPlayer and game.Players.LocalPlayer:FindFirstChild("PlayerGui") loadstring(game:HttpGet("https://raw.githubusercontent.com/teddyhubdev/diepvy/refs/heads/main/TeddyHub.lua"))()' 
     },
     { 
@@ -238,7 +254,7 @@ local scripts = {
         name = "Redz Hub", 
         game = "Blox Fruits",
         key = false, 
-        desc = "Auto Farm • Auto Raid",
+        desc = "Auto Farm • Raid",
         load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/UCT-hub/main/refs/heads/main/redz-v2"))()' 
     },
     { 
@@ -246,7 +262,7 @@ local scripts = {
         name = "Tsuo Hub", 
         game = "Blox Fruits",
         key = false, 
-        desc = "⚠️ PESADO - Instabilidade FPS",
+        desc = "⚠️ PESADO - FPS baixo",
         load = function()
             showMaintenanceNotice("Tsuo Hub", "⚠️ Script pesado causa instabilidade de FPS.")
         end,
@@ -265,7 +281,7 @@ local scripts = {
         name = "CentuDox PvP", 
         game = "Blox Fruits",
         key = false, 
-        desc = "⚔️ Bounty • PvP • Sem Key",
+        desc = "⚔️ Bounty • PvP",
         load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/JustParadozCode/CentuDox-Hub/refs/heads/main/CentuDox-Pvp.xyz"))()' 
     },
     { 
@@ -273,37 +289,31 @@ local scripts = {
         name = "Quantum Onyx (Dungeon)", 
         game = "Blox Fruits (Masmorras)",
         key = false, 
-        desc = "✅ Atualizado • Único que funciona",
+        desc = "✅ Atualizado • Único",
         load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/QuantumOnyx.lua"))()' 
     },
-    
-    -- ===== BLITZ (UNIVERSAL) =====
     { 
         id = 11, 
         name = "Blitz ModMenu", 
         game = "Universal",
         key = false, 
-        desc = "Fly • Aimbot • ESP • Auto Farm",
+        desc = "Fly • Aimbot • ESP",
         load = 'loadstring(game:HttpGet("https://pastebin.com/raw/mF6iNG8C"))()' 
     },
-    
-    -- ===== HORROR ELEVADOR =====
     { 
         id = 12, 
         name = "Horror Elevador", 
         game = "Horror Elevador",
         key = false, 
-        desc = "Coleta • GodMode • Auto Farm",
+        desc = "Coleta • GodMode",
         load = 'loadstring(game:HttpGet("https://pastebin.com/raw/MDjMhyrA"))()' 
     },
-    
-    -- ===== KNOCKBACK BATTLES (EM UPDATE) =====
     { 
         id = 13, 
         name = "Knockback Battles", 
         game = "Knockback Battles",
         key = false, 
-        desc = "🔄 EM UPDATE - Em breve",
+        desc = "🔄 EM UPDATE",
         load = function()
             local updateGui = Instance.new("ScreenGui")
             updateGui.Name = "UpdateNotice"
@@ -311,8 +321,8 @@ local scripts = {
             updateGui.Parent = game.Players.LocalPlayer.PlayerGui
             
             local updateFrame = Instance.new("Frame")
-            updateFrame.Size = UDim2.new(0, isMobile and 300 or 400, 0, isMobile and 130 or 150)
-            updateFrame.Position = UDim2.new(0.5, -(isMobile and 150 or 200), 0.5, -(isMobile and 65 or 75))
+            updateFrame.Size = UDim2.new(0, isMobile and math.clamp(screenW * 0.8, 260, 320) or 400, 0, isMobile and 130 or 150)
+            updateFrame.Position = UDim2.new(0.5, -(isMobile and math.clamp(screenW * 0.4, 130, 160) or 200), 0.5, -(isMobile and 65 or 75))
             updateFrame.BackgroundColor3 = Color3.fromRGB(20, 10, 30)
             updateFrame.BackgroundTransparency = 0.1
             updateFrame.BorderSizePixel = 2
@@ -334,10 +344,10 @@ local scripts = {
             updateTitle.Parent = updateFrame
             
             local updateMsg = Instance.new("TextLabel")
-            updateMsg.Size = UDim2.new(1, -40, 0, 22)
-            updateMsg.Position = UDim2.new(0, 20, 0, 45)
+            updateMsg.Size = UDim2.new(1, -30, 0, 22)
+            updateMsg.Position = UDim2.new(0, 15, 0, 45)
             updateMsg.BackgroundTransparency = 1
-            updateMsg.Text = "🔄 Knockback Battles está sendo atualizado."
+            updateMsg.Text = "🔄 Knockback Battles em atualização."
             updateMsg.TextColor3 = Color3.fromRGB(255, 255, 255)
             updateMsg.TextScaled = true
             updateMsg.Font = Enum.Font.Gotham
@@ -345,7 +355,7 @@ local scripts = {
             
             local updateClose = Instance.new("TextButton")
             updateClose.Size = UDim2.new(0, 90, 0, 28)
-            updateClose.Position = UDim2.new(0.5, -45, 1, -38)
+            updateClose.Position = UDim2.new(0.5, -45, 1, -36)
             updateClose.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
             updateClose.BackgroundTransparency = 0.2
             updateClose.BorderSizePixel = 1
@@ -365,7 +375,9 @@ local scripts = {
             end)
             
             task.wait(5)
-            updateGui:Destroy()
+            if updateGui and updateGui.Parent then
+                updateGui:Destroy()
+            end
         end
     },
 }
@@ -421,12 +433,14 @@ pcall(function()
 end)
 
 -- ============================================
--- CRIAÇÃO DA GUI (RESPONSIVA)
+-- CRIAÇÃO DA GUI (RESPONSIVA E ADAPTATIVA)
 -- ============================================
 local gui = Instance.new("ScreenGui")
 gui.Name = "ScriptMenu"
 gui.ResetOnSpawn = false
 gui.Parent = player.PlayerGui
+gui.IgnoreGuiInset = true
+gui.DisplayOrder = 999
 
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, MENU_WIDTH, 0, MENU_HEIGHT)
@@ -443,10 +457,11 @@ corner.CornerRadius = UDim.new(0, 16)
 corner.Parent = frame
 
 -- ============================================
--- HEADER
+-- HEADER (compacto no mobile)
 -- ============================================
+local HEADER_HEIGHT = isMobile and 38 or 45
 local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, isMobile and 40 or 45)
+header.Size = UDim2.new(1, 0, 0, HEADER_HEIGHT)
 header.BackgroundColor3 = Color3.fromRGB(150, 50, 255)
 header.BackgroundTransparency = 0.15
 header.BorderSizePixel = 0
@@ -456,18 +471,18 @@ headerCorner.CornerRadius = UDim.new(0, 16)
 headerCorner.Parent = header
 
 local title = Instance.new("TextLabel")
-title.Size = UDim2.new(1, -60, 1, 0)
+title.Size = UDim2.new(1, -50, 1, 0)
 title.Position = UDim2.new(0, 10, 0, 0)
 title.BackgroundTransparency = 1
-title.Text = "✦ MULTI-GAME SCRIPTS ✦"
+title.Text = "✦ MULTI-GAME ✦"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextScaled = true
 title.Font = Enum.Font.GothamBold
 title.Parent = header
 
 local closeBtn = Instance.new("TextButton")
-closeBtn.Size = UDim2.new(0, 25, 0, 25)
-closeBtn.Position = UDim2.new(1, -33, 0, isMobile and 8 or 10)
+closeBtn.Size = UDim2.new(0, 26, 0, 26)
+closeBtn.Position = UDim2.new(1, -30, 0.5, -13)
 closeBtn.BackgroundColor3 = Color3.fromRGB(200, 30, 60)
 closeBtn.BackgroundTransparency = 0.2
 closeBtn.BorderSizePixel = 0
@@ -476,17 +491,20 @@ closeBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 closeBtn.TextScaled = true
 closeBtn.Font = Enum.Font.GothamBold
 closeBtn.Parent = header
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 6)
+closeCorner.Parent = closeBtn
 closeBtn.MouseButton1Click:Connect(function() 
     if gui then gui:Destroy() end
 end)
 
 -- ============================================
--- INFO DO JOGO E JOGADOR
+-- INFO DO JOGO E JOGADOR (compacto no mobile)
 -- ============================================
-local infoHeight = isMobile and 50 or 60
+local INFO_HEIGHT = isMobile and 42 or 60
 local infoFrame = Instance.new("Frame")
-infoFrame.Size = UDim2.new(1, -16, 0, infoHeight)
-infoFrame.Position = UDim2.new(0, 8, 0, isMobile and 46 or 52)
+infoFrame.Size = UDim2.new(1, -12, 0, INFO_HEIGHT)
+infoFrame.Position = UDim2.new(0, 6, 0, HEADER_HEIGHT + 4)
 infoFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
 infoFrame.BackgroundTransparency = 0.9
 infoFrame.BorderSizePixel = 1
@@ -497,8 +515,8 @@ infoCorner.CornerRadius = UDim.new(0, 8)
 infoCorner.Parent = infoFrame
 
 local nomeLabel = Instance.new("TextLabel")
-nomeLabel.Size = UDim2.new(0.5, -10, 0, 16)
-nomeLabel.Position = UDim2.new(0, 10, 0, 3)
+nomeLabel.Size = UDim2.new(0.5, -8, 0, isMobile and 12 or 16)
+nomeLabel.Position = UDim2.new(0, 6, 0, 2)
 nomeLabel.BackgroundTransparency = 1
 nomeLabel.Text = "👤 " .. player.Name
 nomeLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -507,20 +525,9 @@ nomeLabel.Font = Enum.Font.GothamSemibold
 nomeLabel.TextXAlignment = Enum.TextXAlignment.Left
 nomeLabel.Parent = infoFrame
 
-local levelLabel = Instance.new("TextLabel")
-levelLabel.Size = UDim2.new(0.5, -10, 0, 16)
-levelLabel.Position = UDim2.new(0, 10, 0, isMobile and 20 or 22)
-levelLabel.BackgroundTransparency = 1
-levelLabel.Text = "📊 Nível: 0"
-levelLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
-levelLabel.TextScaled = true
-levelLabel.Font = Enum.Font.Gotham
-levelLabel.TextXAlignment = Enum.TextXAlignment.Left
-levelLabel.Parent = infoFrame
-
 local gameLabel = Instance.new("TextLabel")
-gameLabel.Size = UDim2.new(0.5, -10, 0, 16)
-gameLabel.Position = UDim2.new(0.5, 5, 0, 3)
+gameLabel.Size = UDim2.new(0.5, -8, 0, isMobile and 12 or 16)
+gameLabel.Position = UDim2.new(0.5, 2, 0, 2)
 gameLabel.BackgroundTransparency = 1
 gameLabel.Text = "🎮 " .. currentGame.name
 gameLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
@@ -529,33 +536,34 @@ gameLabel.Font = Enum.Font.GothamBold
 gameLabel.TextXAlignment = Enum.TextXAlignment.Left
 gameLabel.Parent = infoFrame
 
-local gameIdLabel = Instance.new("TextLabel")
-gameIdLabel.Size = UDim2.new(0.5, -10, 0, 16)
-gameIdLabel.Position = UDim2.new(0.5, 5, 0, isMobile and 20 or 22)
-gameIdLabel.BackgroundTransparency = 1
-gameIdLabel.Text = "🆔 " .. currentGame.id
-gameIdLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-gameIdLabel.TextScaled = true
-gameIdLabel.Font = Enum.Font.Gotham
-gameIdLabel.TextXAlignment = Enum.TextXAlignment.Left
-gameIdLabel.Parent = infoFrame
-
 local statusGame = Instance.new("TextLabel")
-statusGame.Size = UDim2.new(0.5, -10, 0, 16)
-statusGame.Position = UDim2.new(0.5, 5, 0, isMobile and 37 or 41)
+statusGame.Size = UDim2.new(1, -12, 0, isMobile and 12 or 16)
+statusGame.Position = UDim2.new(0, 6, 0, isMobile and 16 or 20)
 statusGame.BackgroundTransparency = 1
-statusGame.Text = "📜 " .. #availableScripts .. " disponíveis"
+statusGame.Text = "📜 " .. #availableScripts .. " scripts disponíveis • ID: " .. currentGame.id
 statusGame.TextColor3 = Color3.fromRGB(255, 200, 100)
 statusGame.TextScaled = true
 statusGame.Font = Enum.Font.Gotham
 statusGame.TextXAlignment = Enum.TextXAlignment.Left
 statusGame.Parent = infoFrame
 
+-- Nível (só mostra se existir, para não ocupar espaço)
+local levelLabel = Instance.new("TextLabel")
+levelLabel.Size = UDim2.new(1, -12, 0, isMobile and 12 or 16)
+levelLabel.Position = UDim2.new(0, 6, 0, isMobile and 28 or 38)
+levelLabel.BackgroundTransparency = 1
+levelLabel.Text = "📊 Nível: --"
+levelLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
+levelLabel.TextScaled = true
+levelLabel.Font = Enum.Font.Gotham
+levelLabel.TextXAlignment = Enum.TextXAlignment.Left
+levelLabel.Parent = infoFrame
+levelLabel.Visible = not isMobile -- Esconde no mobile para economizar espaço
+
 task.spawn(function()
     while gui and gui.Parent do
         pcall(function()
             if not levelLabel or not levelLabel.Parent then return end
-            
             local data = player:FindFirstChild("Data")
             if data then
                 local lvl = data:FindFirstChild("Level")
@@ -569,16 +577,27 @@ task.spawn(function()
 end)
 
 -- ============================================
--- ÁREA DE SCRIPTS
+-- ÁREA DE SCRIPTS (ocupa o espaço restante)
 -- ============================================
-local scrollHeight = MENU_HEIGHT - (isMobile and 210 or 250)
+local BOTTOM_SECTION_HEIGHT = isMobile and 110 or 145
+local SCRIPT_AREA_TOP = HEADER_HEIGHT + INFO_HEIGHT + 8
+local SCRIPT_AREA_HEIGHT = MENU_HEIGHT - SCRIPT_AREA_TOP - BOTTOM_SECTION_HEIGHT
+
 local scriptArea = Instance.new("ScrollingFrame")
-scriptArea.Size = UDim2.new(1, -16, 0, scrollHeight)
-scriptArea.Position = UDim2.new(0, 8, 0, isMobile and 100 or 120)
+scriptArea.Size = UDim2.new(1, -12, 0, SCRIPT_AREA_HEIGHT)
+scriptArea.Position = UDim2.new(0, 6, 0, SCRIPT_AREA_TOP)
 scriptArea.BackgroundTransparency = 1
-scriptArea.ScrollBarThickness = 4
+scriptArea.ScrollBarThickness = isMobile and 3 or 4
 scriptArea.ScrollBarImageColor3 = Color3.fromRGB(150, 50, 255)
+scriptArea.BorderSizePixel = 0
+scriptArea.CanvasSize = UDim2.new(0, 0, 0, 0)
 scriptArea.Parent = frame
+
+-- Layout automático com UIListLayout
+local listLayout = Instance.new("UIListLayout")
+listLayout.SortOrder = Enum.SortOrder.LayoutOrder
+listLayout.Padding = UDim.new(0, isMobile and 4 or 6)
+listLayout.Parent = scriptArea
 
 local selecionados = {}
 local botoesCheck = {}
@@ -595,7 +614,8 @@ for i, data in ipairs(scripts) do
     
     local row = Instance.new("Frame")
     row.Size = UDim2.new(1, -4, 0, ROW_HEIGHT)
-    row.Position = UDim2.new(0, 0, 0, (i-1) * ROW_SPACING)
+    row.Position = UDim2.new(0, 0, 0, 0)
+    row.LayoutOrder = i
     
     if data.isMaintenance then
         row.BackgroundColor3 = Color3.fromRGB(80, 60, 30)
@@ -627,9 +647,10 @@ for i, data in ipairs(scripts) do
     rowCorner.CornerRadius = UDim.new(0, 6)
     rowCorner.Parent = row
 
+    -- Checkbox
     local cb = Instance.new("TextButton")
-    cb.Size = UDim2.new(0, 20, 1, -4)
-    cb.Position = UDim2.new(0, 4, 0, 2)
+    cb.Size = UDim2.new(0, isMobile and 22 or 20, 0, isMobile and 22 or 20)
+    cb.Position = UDim2.new(0, 6, 0.5, isMobile and -11 or -10)
     cb.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     cb.BackgroundTransparency = 0.3
     cb.BorderSizePixel = 1
@@ -675,6 +696,7 @@ for i, data in ipairs(scripts) do
                 cb.BorderColor3 = Color3.fromRGB(200, 150, 255)
                 row.BackgroundColor3 = data.key and Color3.fromRGB(180, 100, 50) or Color3.fromRGB(60, 30, 80)
             else
+                -- Desmarca todos os outros (seleção única)
                 for _, id in ipairs(selecionados) do
                     local cb2 = botoesCheck[id]
                     local row2 = linhas[id]
@@ -718,14 +740,13 @@ for i, data in ipairs(scripts) do
         end)
     end
     
+    -- Nome do script (ajustado para mobile)
     local nameLbl = Instance.new("TextLabel")
-    nameLbl.Size = UDim2.new(0.5, -30, 0, isMobile and 14 or 16)
-    nameLbl.Position = UDim2.new(0, 30, 0, 2)
+    nameLbl.Size = UDim2.new(0.55, -34, 0, isMobile and 14 or 16)
+    nameLbl.Position = UDim2.new(0, 34, 0, 2)
     nameLbl.BackgroundTransparency = 1
     nameLbl.Text = data.name
-    if data.isMaintenance then
-        nameLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
-    elseif data.id == 13 then
+    if data.isMaintenance or data.id == 13 then
         nameLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
     elseif data.id == 18 then
         nameLbl.TextColor3 = Color3.fromRGB(100, 255, 100)
@@ -737,31 +758,10 @@ for i, data in ipairs(scripts) do
     nameLbl.TextXAlignment = Enum.TextXAlignment.Left
     nameLbl.Parent = row
 
-    local gameScriptLbl = Instance.new("TextLabel")
-    gameScriptLbl.Size = UDim2.new(0.4, 0, 0, isMobile and 12 or 14)
-    gameScriptLbl.Position = UDim2.new(0, 30, 0, isMobile and 16 or 18)
-    gameScriptLbl.BackgroundTransparency = 1
-    if data.isMaintenance then
-        gameScriptLbl.Text = "🔧 MANUTENÇÃO"
-        gameScriptLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
-    elseif data.id == 13 then
-        gameScriptLbl.Text = "🔄 EM UPDATE"
-        gameScriptLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
-    elseif data.id == 18 then
-        gameScriptLbl.Text = "🗡️ DUNGEON"
-        gameScriptLbl.TextColor3 = Color3.fromRGB(100, 255, 100)
-    else
-        gameScriptLbl.Text = "🎮 " .. data.game
-        gameScriptLbl.TextColor3 = isAvailable and Color3.fromRGB(180, 255, 180) or Color3.fromRGB(100, 100, 100)
-    end
-    gameScriptLbl.TextScaled = true
-    gameScriptLbl.Font = Enum.Font.GothamBold
-    gameScriptLbl.TextXAlignment = Enum.TextXAlignment.Left
-    gameScriptLbl.Parent = row
-
+    -- Descrição (embaixo do nome)
     local descLbl = Instance.new("TextLabel")
-    descLbl.Size = UDim2.new(0.3, 0, 0, isMobile and 12 or 14)
-    descLbl.Position = UDim2.new(0.45, 5, 0, isMobile and 16 or 18)
+    descLbl.Size = UDim2.new(0.85, -34, 0, isMobile and 11 or 13)
+    descLbl.Position = UDim2.new(0, 34, 0, isMobile and 16 or 19)
     descLbl.BackgroundTransparency = 1
     if data.isMaintenance then
         descLbl.Text = "⏳ Aguarde..."
@@ -781,14 +781,13 @@ for i, data in ipairs(scripts) do
     descLbl.TextXAlignment = Enum.TextXAlignment.Left
     descLbl.Parent = row
 
+    -- Ícone de chave (lado direito)
     local keyLbl = Instance.new("TextLabel")
-    keyLbl.Size = UDim2.new(0, 20, 1, 0)
-    keyLbl.Position = UDim2.new(1, -25, 0, 0)
+    keyLbl.Size = UDim2.new(0, 22, 0, isMobile and 22 or 20)
+    keyLbl.Position = UDim2.new(1, -28, 0.5, isMobile and -11 or -10)
     keyLbl.BackgroundTransparency = 1
     keyLbl.Text = data.key and "🔑" or "✓"
-    if data.isMaintenance then
-        keyLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
-    elseif data.id == 13 then
+    if data.isMaintenance or data.id == 13 then
         keyLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
     elseif data.id == 18 then
         keyLbl.TextColor3 = Color3.fromRGB(100, 255, 100)
@@ -800,22 +799,38 @@ for i, data in ipairs(scripts) do
     keyLbl.Parent = row
 end
 
-scriptArea.CanvasSize = UDim2.new(0, 0, 0, #scripts * ROW_SPACING + 10)
+-- Ajusta o canvas após criar todos os itens
+scriptArea.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 10)
+
+-- Atualiza canvas quando o layout mudar
+listLayout:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(function()
+    scriptArea.CanvasSize = UDim2.new(0, 0, 0, listLayout.AbsoluteContentSize.Y + 10)
+end)
 
 -- ============================================
--- BOTÕES INFERIORES
+-- BOTÕES INFERIORES (layout compacto)
 -- ============================================
-local btnY = isMobile and 383 or 403
-local btnFrame = Instance.new("Frame")
-btnFrame.Size = UDim2.new(1, -16, 0, 35)
-btnFrame.Position = UDim2.new(0, 8, 0, MENU_HEIGHT - (isMobile and 100 or 100))
-btnFrame.BackgroundTransparency = 1
-btnFrame.Parent = frame
+local BTN_HEIGHT = isMobile and 30 or 32
+local BTN_GAP = isMobile and 4 or 6
 
-local btnWidth = isMobile and 100 or 120
+-- Frame que agrupa todos os botões inferiores
+local bottomFrame = Instance.new("Frame")
+bottomFrame.Size = UDim2.new(1, -12, 0, BOTTOM_SECTION_HEIGHT)
+bottomFrame.Position = UDim2.new(0, 6, 1, -BOTTOM_SECTION_HEIGHT - 4)
+bottomFrame.BackgroundTransparency = 1
+bottomFrame.Parent = frame
+
+-- Linha 1: EXECUTAR + HUNT + LIMPAR
+local row1 = Instance.new("Frame")
+row1.Size = UDim2.new(1, 0, 0, BTN_HEIGHT)
+row1.Position = UDim2.new(0, 0, 0, 0)
+row1.BackgroundTransparency = 1
+row1.Parent = bottomFrame
+
+-- EXECUTAR (60% da largura)
 local execBtn = Instance.new("TextButton")
-execBtn.Size = UDim2.new(0, btnWidth, 0, 30)
-execBtn.Position = UDim2.new(0, 0, 0, 2)
+execBtn.Size = UDim2.new(0.55, -BTN_GAP, 1, 0)
+execBtn.Position = UDim2.new(0, 0, 0, 0)
 execBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 255)
 execBtn.BackgroundTransparency = 0.1
 execBtn.BorderSizePixel = 2
@@ -824,15 +839,15 @@ execBtn.Text = "▶ EXECUTAR"
 execBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 execBtn.TextScaled = true
 execBtn.Font = Enum.Font.GothamBold
-execBtn.Parent = btnFrame
+execBtn.Parent = row1
 local execCorner = Instance.new("UICorner")
 execCorner.CornerRadius = UDim.new(0, 8)
 execCorner.Parent = execBtn
 
-local huntWidth = isMobile and 70 or 80
+-- HUNT (restante)
 local huntBtn = Instance.new("TextButton")
-huntBtn.Size = UDim2.new(0, huntWidth, 0, 30)
-huntBtn.Position = UDim2.new(0, btnWidth + 10, 0, 2)
+huntBtn.Size = UDim2.new(0.45, -BTN_GAP, 1, 0)
+huntBtn.Position = UDim2.new(0.55, BTN_GAP, 0, 0)
 huntBtn.BackgroundColor3 = Color3.fromRGB(255, 150, 50)
 huntBtn.BackgroundTransparency = 0.1
 huntBtn.BorderSizePixel = 2
@@ -841,14 +856,22 @@ huntBtn.Text = "🎯 HUNT"
 huntBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 huntBtn.TextScaled = true
 huntBtn.Font = Enum.Font.GothamBold
-huntBtn.Parent = btnFrame
+huntBtn.Parent = row1
 local huntCorner = Instance.new("UICorner")
 huntCorner.CornerRadius = UDim.new(0, 8)
 huntCorner.Parent = huntBtn
 
+-- Linha 2: LIMPAR + AUTO
+local row2 = Instance.new("Frame")
+row2.Size = UDim2.new(1, 0, 0, BTN_HEIGHT)
+row2.Position = UDim2.new(0, 0, 0, BTN_HEIGHT + BTN_GAP)
+row2.BackgroundTransparency = 1
+row2.Parent = bottomFrame
+
+-- LIMPAR
 local clearBtn = Instance.new("TextButton")
-clearBtn.Size = UDim2.new(0, 70, 0, 30)
-clearBtn.Position = UDim2.new(1, -80, 0, 2)
+clearBtn.Size = UDim2.new(0.35, -BTN_GAP, 1, 0)
+clearBtn.Position = UDim2.new(0, 0, 0, 0)
 clearBtn.BackgroundColor3 = Color3.fromRGB(80, 60, 100)
 clearBtn.BackgroundTransparency = 0.1
 clearBtn.BorderSizePixel = 1
@@ -857,23 +880,15 @@ clearBtn.Text = "↺ LIMPAR"
 clearBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 clearBtn.TextScaled = true
 clearBtn.Font = Enum.Font.GothamBold
-clearBtn.Parent = btnFrame
+clearBtn.Parent = row2
 local clearCorner = Instance.new("UICorner")
 clearCorner.CornerRadius = UDim.new(0, 8)
 clearCorner.Parent = clearBtn
 
--- ============================================
--- AUTO EXECUTE
--- ============================================
-local autoFrame = Instance.new("Frame")
-autoFrame.Size = UDim2.new(1, -16, 0, 35)
-autoFrame.Position = UDim2.new(0, 8, 0, MENU_HEIGHT - (isMobile and 65 or 63))
-autoFrame.BackgroundTransparency = 1
-autoFrame.Parent = frame
-
+-- AUTO
 local autoBtn = Instance.new("TextButton")
-autoBtn.Size = UDim2.new(0, 150, 0, 30)
-autoBtn.Position = UDim2.new(0.5, -75, 0, 2)
+autoBtn.Size = UDim2.new(0.65, -BTN_GAP, 1, 0)
+autoBtn.Position = UDim2.new(0.35, BTN_GAP, 0, 0)
 autoBtn.BackgroundColor3 = savedData.autoEnabled and Color3.fromRGB(50, 200, 50) or Color3.fromRGB(80, 60, 100)
 autoBtn.BackgroundTransparency = 0.1
 autoBtn.BorderSizePixel = 2
@@ -882,14 +897,15 @@ autoBtn.Text = savedData.autoEnabled and "🔁 AUTO: ON" or "🔁 AUTO: OFF"
 autoBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 autoBtn.TextScaled = true
 autoBtn.Font = Enum.Font.GothamBold
-autoBtn.Parent = autoFrame
+autoBtn.Parent = row2
 local autoCorner = Instance.new("UICorner")
 autoCorner.CornerRadius = UDim.new(0, 8)
 autoCorner.Parent = autoBtn
 
+-- Label de status
 local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, -16, 0, 22)
-statusLabel.Position = UDim2.new(0, 8, 0, MENU_HEIGHT - (isMobile and 35 or 33))
+statusLabel.Size = UDim2.new(1, 0, 0, isMobile and 20 or 22)
+statusLabel.Position = UDim2.new(0, 0, 0, (BTN_HEIGHT + BTN_GAP) * 2)
 statusLabel.BackgroundColor3 = Color3.fromRGB(150, 50, 255)
 statusLabel.BackgroundTransparency = 0.85
 statusLabel.BorderSizePixel = 1
@@ -898,9 +914,9 @@ statusLabel.Text = savedData.autoEnabled and "⏳ Auto Execute ATIVADO" or "◆ 
 statusLabel.TextColor3 = savedData.autoEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(200, 200, 200)
 statusLabel.TextScaled = true
 statusLabel.Font = Enum.Font.Gotham
-statusLabel.Parent = frame
+statusLabel.Parent = bottomFrame
 local statusCorner = Instance.new("UICorner")
-statusCorner.CornerRadius = UDim.new(0, 8)
+statusCorner.CornerRadius = UDim.new(0, 6)
 statusCorner.Parent = statusLabel
 
 -- ============================================
@@ -942,7 +958,7 @@ local function executeSelectedScript()
     
     if not isAvailable then
         if statusLabel and statusLabel.Parent then
-            statusLabel.Text = "🔒 Script bloqueado para este jogo!"
+            statusLabel.Text = "🔒 Script bloqueado!"
             statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
         end
         return false
@@ -969,7 +985,7 @@ local function executeSelectedScript()
         end
     else
         if statusLabel and statusLabel.Parent then
-            statusLabel.Text = "❌ Erro: " .. tostring(err):sub(1, 40)
+            statusLabel.Text = "❌ Erro: " .. tostring(err):sub(1, 30)
             statusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
         end
     end
@@ -1016,14 +1032,13 @@ local function startAutoCountdown()
     
     if not isAvailable then
         if statusLabel and statusLabel.Parent then
-            statusLabel.Text = "🔒 Script bloqueado para este jogo!"
+            statusLabel.Text = "🔒 Script bloqueado!"
             statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
         end
         return false
     end
     
     autoRunning = true
-    
     local timer = 5
     
     if statusLabel and statusLabel.Parent then
@@ -1032,7 +1047,7 @@ local function startAutoCountdown()
     end
     
     if autoTimerThread then
-        coroutine.close(autoTimerThread)
+        pcall(function() coroutine.close(autoTimerThread) end)
         autoTimerThread = nil
     end
     
@@ -1050,7 +1065,7 @@ local function startAutoCountdown()
         if savedData.autoEnabled and #selecionados > 0 and timer == 0 then
             executeSelectedScript()
             wait(1)
-            if gui then gui:Destroy() end
+            if gui and gui.Parent then gui:Destroy() end
         end
         
         autoRunning = false
@@ -1060,6 +1075,9 @@ local function startAutoCountdown()
     return true
 end
 
+-- ============================================
+-- EVENTOS DOS BOTÕES
+-- ============================================
 autoBtn.MouseButton1Click:Connect(function()
     savedData.autoEnabled = not savedData.autoEnabled
     
@@ -1068,7 +1086,7 @@ autoBtn.MouseButton1Click:Connect(function()
         autoBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
         autoBtn.BorderColor3 = Color3.fromRGB(50, 255, 50)
         if statusLabel and statusLabel.Parent then
-            statusLabel.Text = "⏳ Auto Execute ATIVADO - Selecione um script"
+            statusLabel.Text = "⏳ Auto ATIVADO - Selecione um script"
             statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
         end
         
@@ -1097,7 +1115,7 @@ autoBtn.MouseButton1Click:Connect(function()
         end
         autoRunning = false
         if autoTimerThread then
-            coroutine.close(autoTimerThread)
+            pcall(function() coroutine.close(autoTimerThread) end)
             autoTimerThread = nil
         end
     end
@@ -1113,7 +1131,7 @@ end)
 clearBtn.MouseButton1Click:Connect(function()
     autoRunning = false
     if autoTimerThread then
-        coroutine.close(autoTimerThread)
+        pcall(function() coroutine.close(autoTimerThread) end)
         autoTimerThread = nil
     end
     
@@ -1166,7 +1184,7 @@ local function runScript(scriptData)
     
     if not isAvailable then
         if statusLabel and statusLabel.Parent then
-            statusLabel.Text = "🔒 Script bloqueado para este jogo!"
+            statusLabel.Text = "🔒 Script bloqueado!"
             statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
         end
         return false
@@ -1216,7 +1234,7 @@ execBtn.MouseButton1Click:Connect(function()
     
     autoRunning = false
     if autoTimerThread then
-        coroutine.close(autoTimerThread)
+        pcall(function() coroutine.close(autoTimerThread) end)
         autoTimerThread = nil
     end
     
@@ -1273,7 +1291,7 @@ execBtn.MouseButton1Click:Connect(function()
     
     if statusLabel and statusLabel.Parent then
         if blockedCount > 0 then
-            statusLabel.Text = "✅ Concluído! (" .. blockedCount .. " bloqueados/manutenção)"
+            statusLabel.Text = "✅ Concluído! (" .. blockedCount .. " bloqueados)"
         else
             statusLabel.Text = "✅ Concluído!"
         end
@@ -1283,9 +1301,8 @@ execBtn.MouseButton1Click:Connect(function()
     execBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
     executando = false
     
-    -- Fechar automaticamente se Hunt Hub foi executado
     wait(1)
-    if gui then gui:Destroy() end
+    if gui and gui.Parent then gui:Destroy() end
 end)
 
 huntBtn.MouseButton1Click:Connect(function()
@@ -1298,7 +1315,7 @@ huntBtn.MouseButton1Click:Connect(function()
     
     autoRunning = false
     if autoTimerThread then
-        coroutine.close(autoTimerThread)
+        pcall(function() coroutine.close(autoTimerThread) end)
         autoTimerThread = nil
     end
     
@@ -1312,7 +1329,7 @@ huntBtn.MouseButton1Click:Connect(function()
     
     if not huntAvailable then
         if statusLabel and statusLabel.Parent then
-            statusLabel.Text = "🔒 Hunt Hub bloqueado para este jogo!"
+            statusLabel.Text = "🔒 Hunt Hub bloqueado!"
             statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
         end
         return
@@ -1351,7 +1368,7 @@ huntBtn.MouseButton1Click:Connect(function()
                 huntBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
             else
                 if statusLabel and statusLabel.Parent then
-                    statusLabel.Text = "❌ Erro: " .. tostring(err):sub(1, 40)
+                    statusLabel.Text = "❌ Erro: " .. tostring(err):sub(1, 30)
                     statusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
                 end
                 huntBtn.Text = "❌ ERRO"
@@ -1361,8 +1378,7 @@ huntBtn.MouseButton1Click:Connect(function()
             wait(1)
             executando = false
             
-            -- Fechar o menu automaticamente após executar o Hunt Hub
-            if gui then gui:Destroy() end
+            if gui and gui.Parent then gui:Destroy() end
         end)
     else
         if statusLabel and statusLabel.Parent then
@@ -1391,6 +1407,7 @@ end
 
 print("✅ Menu Multi-Jogos carregado! (Mk_gaming)")
 print("📱 Modo Mobile: " .. (isMobile and "ATIVADO" or "DESATIVADO"))
+print("📐 Tamanho: " .. MENU_WIDTH .. "x" .. MENU_HEIGHT .. " (Tela: " .. screenW .. "x" .. screenH .. ")")
 print("🎮 Jogo atual: " .. currentGame.name .. " (ID: " .. currentGame.id .. ")")
 print("📜 " .. #scripts .. " scripts total, " .. #availableScripts .. " disponíveis")
 print("🔁 Auto Execute: " .. (savedData.autoEnabled and "ON" or "OFF"))
