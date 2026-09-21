@@ -1,8 +1,8 @@
 --[[
     COMANDOGAME - MOBILE EDITION
-    Versão: 19.0.0
+    Versão: 20.0.0
     Criador: Mk_gaming
-    Fly Player (Hover) + Anti-Reset + Script CentHub Bounty
+    Fly Player (Hover) + Anti-Reset + Script CentHub Bounty + Ultra Desempenho
 ]]
 
 -- ============================================
@@ -17,6 +17,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local Lighting = game:GetService("Lighting")
+local Terrain = workspace:FindFirstChildOfClass("Terrain")
 
 -- ============================================
 -- CONFIGURAÇÕES - TUDO DESATIVADO
@@ -67,6 +68,21 @@ local Settings = {
     NoFog = {
         Enabled = false,
     },
+    UltraPerformance = {
+        Enabled = false,
+        RemoveTextures = true,
+        RemoveShadows = true,
+        RemoveParticles = true,
+        RemoveEffects = true,
+        RemoveDecorations = true,
+        RemoveSky = true,
+        RemoveTerrain = true,
+        RemoveSounds = true,
+        RemoveMeshes = true,
+        RemoveBillboards = true,
+        RemovePostFX = true,
+        LowQuality = true,
+    },
 }
 
 -- ============================================
@@ -90,6 +106,16 @@ local CurrentTarget = nil
 local JumpHeld = false
 local CurrentHeight = 0
 local CentHubLoaded = false
+
+-- Backup para Ultra Desempenho
+local PerformanceBackup = {
+    Lighting = {},
+    RemovedObjects = {},
+    OriginalParent = {},
+    OriginalProperties = {},
+    TerrainBackup = nil,
+    IsActive = false,
+}
 
 -- ============================================
 -- DETECÇÃO DE TIME
@@ -123,26 +149,6 @@ local function GetPlayerTeam(player)
                         team = "Marinha"
                     elseif val:match("pirata") or val:match("pirate") then
                         team = "Pirata"
-                    end
-                end
-            end
-        end)
-    end
-    
-    if team == "Desconhecido" then
-        pcall(function()
-            local playerGui = player:FindFirstChild("PlayerGui")
-            if playerGui then
-                local main = playerGui:FindFirstChild("Main")
-                if main then
-                    local teamValue = main:FindFirstChild("Team")
-                    if teamValue then
-                        local val = tostring(teamValue.Value):lower()
-                        if val:match("marinha") or val:match("marine") then
-                            team = "Marinha"
-                        elseif val:match("pirata") or val:match("pirate") then
-                            team = "Pirata"
-                        end
                     end
                 end
             end
@@ -189,6 +195,268 @@ local function IsEnemy(player)
     end
     
     return true
+end
+
+-- ============================================
+-- ULTRA DESEMPENHO (NOVO)
+-- ============================================
+
+-- Aplica configurações de Ultra Desempenho
+local function ApplyUltraPerformance()
+    if PerformanceBackup.IsActive then return end
+    
+    PerformanceBackup.IsActive = true
+    PerformanceBackup.RemovedObjects = {}
+    PerformanceBackup.OriginalParent = {}
+    PerformanceBackup.OriginalProperties = {}
+    
+    -- ===== LIGHTING =====
+    pcall(function()
+        PerformanceBackup.Lighting = {
+            GlobalShadows = Lighting.GlobalShadows,
+            Brightness = Lighting.Brightness,
+            Ambient = Lighting.Ambient,
+            OutdoorAmbient = Lighting.OutdoorAmbient,
+            FogEnd = Lighting.FogEnd,
+            FogStart = Lighting.FogStart,
+            FogColor = Lighting.FogColor,
+            ShadowSoftness = Lighting.ShadowSoftness,
+            EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
+            EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale,
+            Technology = Lighting.Technology,
+            QualityLevel = Lighting.QualityLevel,
+        }
+        
+        Lighting.GlobalShadows = false
+        Lighting.Brightness = 0
+        Lighting.Ambient = Color3.fromRGB(180, 180, 180)
+        Lighting.OutdoorAmbient = Color3.fromRGB(180, 180, 180)
+        Lighting.FogEnd = 100000
+        Lighting.FogStart = 0
+        Lighting.FogColor = Color3.fromRGB(0, 0, 0)
+        Lighting.ShadowSoftness = 0
+        Lighting.EnvironmentDiffuseScale = 0
+        Lighting.EnvironmentSpecularScale = 0
+    end)
+    
+    -- ===== REMOVER EFEITOS DE LIGHTING =====
+    pcall(function()
+        for _, child in pairs(Lighting:GetChildren()) do
+            if child:IsA("Atmosphere") or 
+               child:IsA("BloomEffect") or 
+               child:IsA("BlurEffect") or 
+               child:IsA("ColorCorrectionEffect") or 
+               child:IsA("SunRaysEffect") or 
+               child:IsA("DepthOfFieldEffect") or
+               child:IsA("Sky") then
+                PerformanceBackup.OriginalParent[child] = child.Parent
+                child.Parent = nil
+                table.insert(PerformanceBackup.RemovedObjects, child)
+            end
+        end
+    end)
+    
+    -- ===== REMOVER TEXTURAS DO WORKSPACE =====
+    pcall(function()
+        for _, obj in pairs(workspace:GetDescendants()) do
+            -- Remover Decals e Texturas
+            if Settings.UltraPerformance.RemoveTextures then
+                if obj:IsA("Decal") or obj:IsA("Texture") then
+                    PerformanceBackup.OriginalProperties[obj] = obj.Transparency
+                    obj.Transparency = 1
+                end
+                if obj:IsA("SurfaceAppearance") then
+                    PerformanceBackup.OriginalParent[obj] = obj.Parent
+                    obj.Parent = nil
+                    table.insert(PerformanceBackup.RemovedObjects, obj)
+                end
+            end
+            
+            -- Remover Partículas e Efeitos
+            if Settings.UltraPerformance.RemoveParticles then
+                if obj:IsA("ParticleEmitter") or 
+                   obj:IsA("Trail") or 
+                   obj:IsA("Smoke") or 
+                   obj:IsA("Fire") or 
+                   obj:IsA("Sparkles") or
+                   obj:IsA("Explosion") then
+                    obj.Enabled = false
+                    PerformanceBackup.OriginalProperties[obj] = "Enabled"
+                end
+            end
+            
+            -- Remover BillboardGuis
+            if Settings.UltraPerformance.RemoveBillboards then
+                if obj:IsA("BillboardGui") or obj:IsA("SurfaceGui") then
+                    -- Não remove o ESP do nosso script
+                    if obj.Name ~= "ESP" and obj.Name ~= "ComandoGameESP" then
+                        obj.Enabled = false
+                    end
+                end
+            end
+            
+            -- Remover Decorações
+            if Settings.UltraPerformance.RemoveDecorations then
+                if obj:IsA("Decoration") then
+                    PerformanceBackup.OriginalParent[obj] = obj.Parent
+                    obj.Parent = nil
+                    table.insert(PerformanceBackup.RemovedObjects, obj)
+                end
+            end
+            
+            -- Remover Meshes (reduzir qualidade)
+            if Settings.UltraPerformance.RemoveMeshes then
+                if obj:IsA("MeshPart") then
+                    obj.TextureID = ""
+                    obj.RenderFidelity = Enum.RenderFidelity.Performance
+                end
+                if obj:IsA("SpecialMesh") then
+                    obj.TextureId = ""
+                end
+            end
+        end
+    end)
+    
+    -- ===== REMOVER SOM/ÁUDIO =====
+    pcall(function()
+        if Settings.UltraPerformance.RemoveSounds then
+            for _, obj in pairs(game:GetDescendants()) do
+                if obj:IsA("Sound") then
+                    obj.Volume = 0
+                    obj.Playing = false
+                end
+            end
+            -- Desativar som global
+            UserInputService.MouseIconEnabled = true
+        end
+    end)
+    
+    -- ===== TERRAIN =====
+    pcall(function()
+        if Settings.UltraPerformance.RemoveTerrain then
+            local terrain = workspace:FindFirstChildOfClass("Terrain")
+            if terrain then
+                PerformanceBackup.TerrainBackup = {
+                    WaterWaveSize = terrain.WaterWaveSize,
+                    WaterWaveSpeed = terrain.WaterWaveSpeed,
+                    WaterReflectance = terrain.WaterReflectance,
+                    WaterTransparency = terrain.WaterTransparency,
+                    Decoration = terrain.Decoration,
+                }
+                terrain.WaterWaveSize = 0
+                terrain.WaterWaveSpeed = 0
+                terrain.WaterReflectance = 0
+                terrain.WaterTransparency = 1
+                terrain.Decoration = false
+            end
+        end
+    end)
+    
+    -- ===== REDUZIR QUALIDADE GRÁFICA =====
+    pcall(function()
+        -- Reduzir qualidade de renderização
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+    end)
+    
+    print("✅ Ultra Desempenho ATIVADO!")
+end
+
+-- Remove o Ultra Desempenho
+local function RemoveUltraPerformance()
+    if not PerformanceBackup.IsActive then return end
+    
+    -- Restaurar Lighting
+    pcall(function()
+        for prop, value in pairs(PerformanceBackup.Lighting) do
+            Lighting[prop] = value
+        end
+    end)
+    
+    -- Restaurar objetos removidos
+    pcall(function()
+        for _, obj in pairs(PerformanceBackup.RemovedObjects) do
+            if obj and obj.Parent == nil then
+                local originalParent = PerformanceBackup.OriginalParent[obj]
+                if originalParent then
+                    obj.Parent = originalParent
+                end
+            end
+        end
+    end)
+    
+    -- Restaurar propriedades
+    pcall(function()
+        for obj, value in pairs(PerformanceBackup.OriginalProperties) do
+            if obj and obj.Parent then
+                if value == "Enabled" then
+                    obj.Enabled = true
+                else
+                    obj.Transparency = value
+                end
+            end
+        end
+    end)
+    
+    -- Restaurar Terrain
+    pcall(function()
+        if PerformanceBackup.TerrainBackup then
+            local terrain = workspace:FindFirstChildOfClass("Terrain")
+            if terrain then
+                for prop, value in pairs(PerformanceBackup.TerrainBackup) do
+                    terrain[prop] = value
+                end
+            end
+        end
+    end)
+    
+    -- Restaurar qualidade gráfica
+    pcall(function()
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+        settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Automatic
+    end)
+    
+    PerformanceBackup.IsActive = false
+    PerformanceBackup.RemovedObjects = {}
+    PerformanceBackup.OriginalParent = {}
+    PerformanceBackup.OriginalProperties = {}
+    PerformanceBackup.TerrainBackup = nil
+    
+    print("❌ Ultra Desempenho DESATIVADO!")
+end
+
+-- Aplicar quando objetos novos aparecerem
+local function MonitorNewObjects()
+    if not Settings.UltraPerformance.Enabled then return end
+    
+    spawn(function()
+        while Settings.UltraPerformance.Enabled do
+            wait(2)
+            
+            pcall(function()
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if Settings.UltraPerformance.RemoveParticles then
+                        if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
+                            obj.Enabled = false
+                        end
+                    end
+                    
+                    if Settings.UltraPerformance.RemoveTextures then
+                        if obj:IsA("Decal") or obj:IsA("Texture") then
+                            obj.Transparency = 1
+                        end
+                    end
+                    
+                    if Settings.UltraPerformance.RemoveSounds then
+                        if obj:IsA("Sound") then
+                            obj.Volume = 0
+                            obj.Playing = false
+                        end
+                    end
+                end
+            end)
+        end
+    end)
 end
 
 -- ============================================
@@ -672,6 +940,7 @@ local function CreateESPForPlayer(player)
     end
     
     local espGui = Instance.new("BillboardGui")
+    espGui.Name = "ComandoGameESP"
     espGui.Size = UDim2.new(0, 250, 0, 100)
     espGui.AlwaysOnTop = true
     espGui.StudsOffset = Vector3.new(0, 3, 0)
@@ -1156,6 +1425,209 @@ local function CreateUI()
     })
 
     -- ============================================
+    -- ABA: PERFORMANCE (NOVA)
+    -- ============================================
+    
+    local PerformanceTab = Window:CreateTab("⚡ Performance", 4483362458)
+    
+    PerformanceTab:CreateSection("🚀 Ultra Desempenho")
+    
+    PerformanceTab:CreateToggle({
+        Name = "⚡ Ativar Ultra Desempenho",
+        CurrentValue = false,
+        Callback = function(v)
+            Settings.UltraPerformance.Enabled = v
+            if v then
+                ApplyUltraPerformance()
+                MonitorNewObjects()
+                Rayfield:Notify({
+                    Title = "Ultra Desempenho",
+                    Content = "🚀 ATIVADO! FPS maximizado!",
+                    Duration = 3,
+                })
+            else
+                RemoveUltraPerformance()
+                Rayfield:Notify({
+                    Title = "Ultra Desempenho",
+                    Content = "⏹️ DESATIVADO - Gráficos restaurados",
+                    Duration = 3,
+                })
+            end
+        end
+    })
+    
+    PerformanceTab:CreateSection("⚙️ O que remover")
+    
+    PerformanceTab:CreateToggle({
+        Name = "Remover Texturas",
+        CurrentValue = true,
+        Callback = function(v) 
+            Settings.UltraPerformance.RemoveTextures = v
+            if Settings.UltraPerformance.Enabled then
+                if v then
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if obj:IsA("Decal") or obj:IsA("Texture") then
+                            obj.Transparency = 1
+                        end
+                    end
+                end
+            end
+        end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Remover Sombras",
+        CurrentValue = true,
+        Callback = function(v) 
+            Settings.UltraPerformance.RemoveShadows = v
+            if Settings.UltraPerformance.Enabled and v then
+                Lighting.GlobalShadows = false
+            end
+        end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Remover Partículas",
+        CurrentValue = true,
+        Callback = function(v) 
+            Settings.UltraPerformance.RemoveParticles = v
+            if Settings.UltraPerformance.Enabled then
+                if v then
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
+                            obj.Enabled = false
+                        end
+                    end
+                end
+            end
+        end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Remover Efeitos de Luz",
+        CurrentValue = true,
+        Callback = function(v) 
+            Settings.UltraPerformance.RemoveEffects = v
+            if Settings.UltraPerformance.Enabled then
+                if v then
+                    for _, child in pairs(Lighting:GetChildren()) do
+                        if child:IsA("BloomEffect") or child:IsA("BlurEffect") or child:IsA("ColorCorrectionEffect") or child:IsA("SunRaysEffect") or child:IsA("DepthOfFieldEffect") then
+                            child.Enabled = false
+                        end
+                    end
+                end
+            end
+        end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Remover Sky/Atmosphere",
+        CurrentValue = true,
+        Callback = function(v) 
+            Settings.UltraPerformance.RemoveSky = v
+            if Settings.UltraPerformance.Enabled then
+                if v then
+                    for _, child in pairs(Lighting:GetChildren()) do
+                        if child:IsA("Sky") or child:IsA("Atmosphere") then
+                            child.Parent = nil
+                        end
+                    end
+                end
+            end
+        end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Remover Água/Decorações",
+        CurrentValue = true,
+        Callback = function(v) 
+            Settings.UltraPerformance.RemoveTerrain = v
+            if Settings.UltraPerformance.Enabled then
+                if v then
+                    local terrain = workspace:FindFirstChildOfClass("Terrain")
+                    if terrain then
+                        terrain.WaterWaveSize = 0
+                        terrain.WaterWaveSpeed = 0
+                        terrain.WaterReflectance = 0
+                        terrain.WaterTransparency = 1
+                        terrain.Decoration = false
+                    end
+                end
+            end
+        end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Remover Sons",
+        CurrentValue = true,
+        Callback = function(v) 
+            Settings.UltraPerformance.RemoveSounds = v
+            if Settings.UltraPerformance.Enabled then
+                if v then
+                    for _, obj in pairs(game:GetDescendants()) do
+                        if obj:IsA("Sound") then
+                            obj.Volume = 0
+                            obj.Playing = false
+                        end
+                    end
+                end
+            end
+        end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Reduzir Qualidade de Malhas",
+        CurrentValue = true,
+        Callback = function(v) 
+            Settings.UltraPerformance.RemoveMeshes = v
+            if Settings.UltraPerformance.Enabled then
+                if v then
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if obj:IsA("MeshPart") then
+                            obj.RenderFidelity = Enum.RenderFidelity.Performance
+                        end
+                    end
+                end
+            end
+        end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Remover BillboardGuis",
+        CurrentValue = true,
+        Callback = function(v) Settings.UltraPerformance.RemoveBillboards = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Reduzir Qualidade Gráfica",
+        CurrentValue = true,
+        Callback = function(v) 
+            Settings.UltraPerformance.LowQuality = v
+            if Settings.UltraPerformance.Enabled and v then
+                pcall(function()
+                    settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+                end)
+            end
+        end
+    })
+    
+    PerformanceTab:CreateSection("ℹ️ Informações")
+    
+    PerformanceTab:CreateLabel("⚡ Ultra Desempenho remove:")
+    PerformanceTab:CreateLabel("• Texturas e Decals")
+    PerformanceTab:CreateLabel("• Sombras e Iluminação pesada")
+    PerformanceTab:CreateLabel("• Partículas e Efeitos")
+    PerformanceTab:CreateLabel("• Sky e Atmosphere")
+    PerformanceTab:CreateLabel("• Água e Reflexos")
+    PerformanceTab:CreateLabel("• Sons do jogo")
+    PerformanceTab:CreateLabel("• Qualidade de malhas")
+    PerformanceTab:CreateLabel("• E muito mais!")
+    PerformanceTab:CreateLabel("")
+    PerformanceTab:CreateLabel("💡 Aumenta MUITO o FPS")
+    PerformanceTab:CreateLabel("📱 Perfeito para mobile fraco")
+    PerformanceTab:CreateLabel("⚠️ Desative para voltar ao normal")
+
+    -- ============================================
     -- ABA: PLAYER
     -- ============================================
     
@@ -1359,9 +1831,6 @@ local function CreateUI()
         Callback = function(v) Settings.FlyPlayer.MoveSpeed = v end
     })
     
-    MoveTab:CreateLabel("💡 Fica parado no ar e você se move normalmente")
-    MoveTab:CreateLabel("📱 Funciona no mobile (arraste o direcional)")
-    
     MoveTab:CreateSection("🚀 Fly Tradicional")
     
     MoveTab:CreateToggle({
@@ -1380,12 +1849,9 @@ local function CreateUI()
         CurrentValue = 150,
         Callback = function(v) Settings.Fly.Speed = v end
     })
-    
-    MoveTab:CreateLabel("💡 PC: Segure ESPAÇO")
-    MoveTab:CreateLabel("📱 Mobile: Segure BOTÃO JUMP")
 
     -- ============================================
-    -- ABA: SCRIPTS (NOVA)
+    -- ABA: SCRIPTS
     -- ============================================
     
     local ScriptsTab = Window:CreateTab("📜 Scripts", 4483362458)
@@ -1426,7 +1892,7 @@ local function CreateUI()
                 else
                     Rayfield:Notify({
                         Title = "CentHub Bounty",
-                        Content = "❌ Erro ao carregar: " .. tostring(err):sub(1, 40),
+                        Content = "❌ Erro: " .. tostring(err):sub(1, 40),
                         Duration = 5,
                     })
                     warn("❌ Erro CentHub: " .. tostring(err))
@@ -1436,38 +1902,30 @@ local function CreateUI()
     })
     
     ScriptsTab:CreateLabel("🎯 Script de Bounty Hunt / PvP")
-    ScriptsTab:CreateLabel("💡 Clique no botão para carregar")
-    ScriptsTab:CreateLabel("⚠️ Pode demorar alguns segundos")
-    
-    ScriptsTab:CreateSection("ℹ️ Informações")
-    
-    ScriptsTab:CreateLabel("📌 Script: CentHub Bounty")
     ScriptsTab:CreateLabel("👤 Criador: JustParadozCode")
     ScriptsTab:CreateLabel("🔗 GitHub: CentuDox-Hub")
-    ScriptsTab:CreateLabel("")
-    ScriptsTab:CreateLabel("💡 Dica: Ative depois de carregar")
-    ScriptsTab:CreateLabel("   para não conflitar com este menu")
 
     -- ============================================
     -- ABA: SOBRE
     -- ============================================
     
     local AboutTab = Window:CreateTab("ℹ️ Sobre", 4483362458)
-    AboutTab:CreateLabel("⚡ ComandoGame Mobile v19.0")
+    AboutTab:CreateLabel("⚡ ComandoGame Mobile v20.0")
     AboutTab:CreateLabel("👤 Criador: Mk_gaming")
     AboutTab:CreateLabel("")
     AboutTab:CreateLabel("🆕 NOVIDADES:")
+    AboutTab:CreateLabel("• Ultra Desempenho (NOVO)")
+    AboutTab:CreateLabel("• Aba ⚡ Performance")
     AboutTab:CreateLabel("• Script CentHub Bounty")
-    AboutTab:CreateLabel("• Aba 📜 Scripts")
+    AboutTab:CreateLabel("• Fly Player (Hover)")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("🎯 Aimlock - Trava no alvo")
-    AboutTab:CreateLabel("👁️ ESP - Nome, Nível, HP")
+    AboutTab:CreateLabel("⚡ Ultra Desempenho")
+    AboutTab:CreateLabel("🎯 Aimlock")
+    AboutTab:CreateLabel("👁️ ESP")
     AboutTab:CreateLabel("🦘 Infinite Jump")
-    AboutTab:CreateLabel("🏃 Speed/Jump")
-    AboutTab:CreateLabel("✈️ Fly Player (Hover)")
-    AboutTab:CreateLabel("🚀 Fly Tradicional")
+    AboutTab:CreateLabel("✈️ Fly Player")
+    AboutTab:CreateLabel("🚀 Fly")
     AboutTab:CreateLabel("🛡️ Anti-Stun")
-    AboutTab:CreateLabel("🌫️ No Fog")
     AboutTab:CreateLabel("📜 CentHub Bounty")
 end
 
@@ -1479,11 +1937,11 @@ CreateUI()
 
 Rayfield:Notify({
     Title = "ComandoGame Mobile",
-    Content = "⚡ v19.0 - CentHub Bounty adicionado!",
+    Content = "⚡ v20.0 - Ultra Desempenho adicionado!",
     Duration = 4,
 })
 
-print("✅ ComandoGame Mobile v19.0 carregado!")
+print("✅ ComandoGame Mobile v20.0 carregado!")
 print("👤 Criador: Mk_gaming")
-print("📜 Aba Scripts adicionada!")
-print("🎯 CentHub Bounty disponível")
+print("⚡ Ultra Desempenho disponível!")
+print("📜 CentHub Bounty disponível!")
