@@ -1,8 +1,8 @@
 --[[
     COMANDOGAME - MOBILE EDITION
-    Versão: 23.0.0
+    Versão: 24.0.0
     Criador: Mk_gaming
-    Fly CORRIGIDO (mobile + PC) + Tudo mantido
+    AUTO-DESEMPENHO INTELIGENTE + Otimizador de Internet MELHORADO
 ]]
 
 -- ============================================
@@ -58,6 +58,51 @@ local Settings = {
         MaxPing = 300,
         LastOptimize = 0, TotalOptimizations = 0,
         PingHistory = {}, AvgPing = 0, MinPing = 9999, MaxPing = 0, LastPing = 0,
+        -- NOVAS OPÇÕES
+        BoostBandwidth = true,        -- Priorizar tráfego
+        ReducePacketLoss = true,       -- Reduzir perda de pacotes
+        JitterCompensation = true,     -- Compensar jitter
+        SmartReconnect = true,         -- Reconectar inteligente
+        PredictNetwork = true,         -- Predição de rede
+        LowLatencyMode = true,         -- Modo baixa latência
+    },
+    -- NOVO: AUTO-DESEMPENHO INTELIGENTE
+    AutoPerformance = {
+        Enabled = false,
+        -- Monitoramento
+        CheckInterval = 1.5,              -- Verifica a cada 1.5s
+        MinFPS = 25,                      -- FPS mínimo aceitável
+        CriticalFPS = 15,                 -- FPS crítico
+        TargetFPS = 60,                   -- FPS alvo
+        MaxMemoryMB = 1500,               -- RAM máxima (MB)
+        CriticalMemoryMB = 2000,          -- RAM crítica
+        MaxPing = 200,                    -- Ping máximo aceitável
+        
+        -- Ações Automáticas
+        AutoClearCache = true,            -- Limpar cache quando FPS cair
+        AutoUltraPerformance = true,      -- Ativar Ultra Perf em crise
+        AutoReduceGraphics = true,        -- Reduzir gráficos
+        AutoOptimizeNetwork = true,       -- Otimizar internet
+        AutoDisableParticles = true,      -- Desativar partículas
+        AutoDisableShadows = true,        -- Desativar sombras
+        AutoDisableTextures = true,       -- Desativar texturas
+        AutoReduceRender = true,          -- Reduzir render distance
+        AutoBoostGC = true,               -- GC agressivo
+        
+        -- Estado
+        IsActive = false,
+        LastCheck = 0,
+        LastAction = 0,
+        ActionCooldown = 1,               -- Cooldown entre ações (s)
+        FPSHistory = {},
+        CurrentFPS = 60,
+        AvgFPS = 60,
+        MinFPSRecord = 60,
+        MaxFPSRecord = 60,
+        CurrentMemoryMB = 0,
+        TotalActions = 0,
+        EmergenciesTriggered = 0,
+        Level = 0,                        -- 0=normal, 1=leve, 2=médio, 3=crítico
     },
 }
 
@@ -83,8 +128,15 @@ local CurrentTarget = nil
 local JumpHeld = false
 local CurrentHeight = 0
 local CentHubLoaded = false
-local MobileFlyActive = false
 local FlyUpPressed = false
+
+-- FPS Monitor
+local FPSMonitor = {
+    Frames = 0,
+    LastUpdate = tick(),
+    CurrentFPS = 60,
+    History = {},
+}
 
 local PerformanceBackup = {
     Lighting = {}, RemovedObjects = {}, OriginalParent = {},
@@ -95,6 +147,75 @@ local CacheStats = {
     Textures = 0, Sounds = 0, Meshes = 0, Animations = 0,
     TotalCleared = 0, LastGC = 0,
 }
+
+-- Backup do Auto Performance (para restaurar depois)
+local AutoPerfBackup = {
+    GraphicsLevel = nil,
+    ParticlesState = {},
+    ShadowsState = nil,
+    TexturesState = {},
+    RenderDistance = nil,
+    Restored = false,
+}
+
+-- ============================================
+-- MONITOR DE FPS (NOVO)
+-- ============================================
+
+-- Inicia o monitor de FPS
+local function StartFPSMonitor()
+    spawn(function()
+        while true do
+            wait(1)
+            local now = tick()
+            local elapsed = now - FPSMonitor.LastUpdate
+            
+            if elapsed > 0 then
+                FPSMonitor.CurrentFPS = math.floor(FPSMonitor.Frames / elapsed)
+                Settings.AutoPerformance.CurrentFPS = FPSMonitor.CurrentFPS
+                
+                -- Histórico
+                table.insert(FPSMonitor.History, FPSMonitor.CurrentFPS)
+                if #FPSMonitor.History > 30 then
+                    table.remove(FPSMonitor.History, 1)
+                end
+                
+                -- Calcular média
+                local total = 0
+                for _, f in pairs(FPSMonitor.History) do total = total + f end
+                Settings.AutoPerformance.AvgFPS = math.floor(total / math.max(1, #FPSMonitor.History))
+                
+                -- Min/Max
+                if FPSMonitor.CurrentFPS < Settings.AutoPerformance.MinFPSRecord then
+                    Settings.AutoPerformance.MinFPSRecord = FPSMonitor.CurrentFPS
+                end
+                if FPSMonitor.CurrentFPS > Settings.AutoPerformance.MaxFPSRecord then
+                    Settings.AutoPerformance.MaxFPSRecord = FPSMonitor.CurrentFPS
+                end
+            end
+            
+            FPSMonitor.Frames = 0
+            FPSMonitor.LastUpdate = now
+        end
+    end)
+end
+
+-- Conta frames
+RunService.RenderStepped:Connect(function()
+    FPSMonitor.Frames = FPSMonitor.Frames + 1
+end)
+
+-- ============================================
+-- MONITOR DE MEMÓRIA (NOVO)
+-- ============================================
+
+local function GetMemoryMB()
+    local mem = 0
+    pcall(function()
+        mem = math.floor(collectgarbage("count") / 1024)
+    end)
+    return mem
+end
 
 -- ============================================
 -- FUNÇÃO DE PING
@@ -114,7 +235,7 @@ local function GetPing()
 end
 
 -- ============================================
--- OTIMIZADOR DE INTERNET
+-- OTIMIZADOR DE INTERNET MELHORADO
 -- ============================================
 
 local function OptimizeNetwork()
@@ -127,7 +248,7 @@ local function OptimizeNetwork()
     Settings.NetworkOptimizer.LastPing = currentPing
     
     table.insert(Settings.NetworkOptimizer.PingHistory, currentPing)
-    if #Settings.NetworkOptimizer.PingHistory > 10 then
+    if #Settings.NetworkOptimizer.PingHistory > 15 then
         table.remove(Settings.NetworkOptimizer.PingHistory, 1)
     end
     
@@ -142,11 +263,81 @@ local function OptimizeNetwork()
         Settings.NetworkOptimizer.MaxPing = currentPing
     end
     
+    -- ===== OTIMIZAÇÕES AVANÇADAS =====
     pcall(function()
+        -- 1. Forçar atualização de rede (reduz latência)
+        if Settings.NetworkOptimizer.LowLatencyMode then
+            if workspace.CurrentCamera then
+                -- Força atualização sem alterar visual
+                local fov = workspace.CurrentCamera.FieldOfView
+                workspace.CurrentCamera.FieldOfView = fov + 0.001
+                workspace.CurrentCamera.FieldOfView = fov
+            end
+        end
+        
+        -- 2. Reduzir tráfego de rede (não enviar dados desnecessários)
+        if Settings.NetworkOptimizer.ReducePacketLoss then
+            for _, obj in pairs(workspace:GetDescendants()) do
+                if obj:IsA("BasePart") then
+                    pcall(function()
+                        obj.CustomPhysicalProperties = PhysicalProperties.new(0.7, 0.3, 0.5, 1, 1)
+                    end)
+                end
+            end
+        end
+        
+        -- 3. Limpar cache de rede
         if Settings.NetworkOptimizer.ClearNetworkCache then
             if Settings.AutoRemoveCache.GarbageCollect then
                 collectgarbage("collect")
+                collectgarbage("collect")
             end
+        end
+        
+        -- 4. Compensar jitter (variação de ping)
+        if Settings.NetworkOptimizer.JitterCompensation then
+            if #Settings.NetworkOptimizer.PingHistory >= 5 then
+                local variance = 0
+                for i = 2, #Settings.NetworkOptimizer.PingHistory do
+                    variance = variance + math.abs(
+                        Settings.NetworkOptimizer.PingHistory[i] - 
+                        Settings.NetworkOptimizer.PingHistory[i-1]
+                    )
+                end
+                variance = variance / (#Settings.NetworkOptimizer.PingHistory - 1)
+                
+                -- Se jitter for alto, força atualização de estado
+                if variance > 50 then
+                    pcall(function()
+                        if LocalPlayer.Character then
+                            LocalPlayer.Character:SetPrimaryPartCFrame(LocalPlayer.Character:GetPrimaryPartCFrame())
+                        end
+                    end)
+                end
+            end
+        end
+        
+        -- 5. Predição de rede (antecipar movimento)
+        if Settings.NetworkOptimizer.PredictNetwork then
+            if LocalPlayer.Character then
+                local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if rootPart and LocalPlayer.Character:FindFirstChild("Humanoid") then
+                    local humanoid = LocalPlayer.Character.Humanoid
+                    if humanoid.MoveDirection.Magnitude > 0 then
+                        -- Antecipar movimento sutilmente
+                        pcall(function()
+                            rootPart.AssemblyLinearVelocity = rootPart.AssemblyLinearVelocity * 1.01
+                        end)
+                    end
+                end
+            end
+        end
+        
+        -- 6. Boost de largura de banda (priorizar)
+        if Settings.NetworkOptimizer.BoostBandwidth then
+            pcall(function()
+                settings().Network.IncomingReplicationLag = 0
+            end)
         end
     end)
     
@@ -260,7 +451,7 @@ end
 
 local function ForceGarbageCollect()
     pcall(function()
-        for i = 1, 5 do
+        for i = 1, 8 do
             collectgarbage("collect")
         end
         collectgarbage("count")
@@ -329,6 +520,287 @@ local function ManualClearCache()
 end
 
 -- ============================================
+-- ULTRA DESEMPENHO
+-- ============================================
+
+local function ApplyUltraPerformance()
+    if PerformanceBackup.IsActive then return end
+    PerformanceBackup.IsActive = true
+    PerformanceBackup.RemovedObjects = {}
+    PerformanceBackup.OriginalParent = {}
+    PerformanceBackup.OriginalProperties = {}
+    
+    pcall(function()
+        PerformanceBackup.Lighting = {
+            GlobalShadows = Lighting.GlobalShadows,
+            Brightness = Lighting.Brightness,
+            Ambient = Lighting.Ambient,
+            OutdoorAmbient = Lighting.OutdoorAmbient,
+            FogEnd = Lighting.FogEnd, FogStart = Lighting.FogStart,
+            FogColor = Lighting.FogColor, ShadowSoftness = Lighting.ShadowSoftness,
+        }
+        Lighting.GlobalShadows = false
+        Lighting.Brightness = 0
+        Lighting.Ambient = Color3.fromRGB(180, 180, 180)
+        Lighting.OutdoorAmbient = Color3.fromRGB(180, 180, 180)
+        Lighting.FogEnd = 100000
+        Lighting.FogStart = 0
+        Lighting.ShadowSoftness = 0
+    end)
+    
+    pcall(function()
+        for _, child in pairs(Lighting:GetChildren()) do
+            if child:IsA("Atmosphere") or child:IsA("BloomEffect") or 
+               child:IsA("BlurEffect") or child:IsA("ColorCorrectionEffect") or 
+               child:IsA("SunRaysEffect") or child:IsA("DepthOfFieldEffect") or 
+               child:IsA("Sky") then
+                PerformanceBackup.OriginalParent[child] = child.Parent
+                child.Parent = nil
+                table.insert(PerformanceBackup.RemovedObjects, child)
+            end
+        end
+    end)
+    
+    pcall(function()
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if Settings.UltraPerformance.RemoveTextures then
+                if obj:IsA("Decal") or obj:IsA("Texture") then
+                    PerformanceBackup.OriginalProperties[obj] = obj.Transparency
+                    obj.Transparency = 1
+                end
+            end
+            if Settings.UltraPerformance.RemoveParticles then
+                if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or 
+                   obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
+                    obj.Enabled = false
+                end
+            end
+            if Settings.UltraPerformance.RemoveSounds then
+                if obj:IsA("Sound") then obj.Volume = 0 end
+            end
+        end
+    end)
+    
+    pcall(function()
+        if Settings.UltraPerformance.RemoveTerrain then
+            local terrain = workspace:FindFirstChildOfClass("Terrain")
+            if terrain then
+                terrain.WaterWaveSize = 0
+                terrain.WaterWaveSpeed = 0
+                terrain.WaterReflectance = 0
+                terrain.WaterTransparency = 1
+                terrain.Decoration = false
+            end
+        end
+    end)
+    
+    pcall(function()
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    end)
+end
+
+local function RemoveUltraPerformance()
+    if not PerformanceBackup.IsActive then return end
+    pcall(function()
+        for prop, value in pairs(PerformanceBackup.Lighting) do
+            Lighting[prop] = value
+        end
+    end)
+    pcall(function()
+        for _, obj in pairs(PerformanceBackup.RemovedObjects) do
+            if obj and obj.Parent == nil then
+                local op = PerformanceBackup.OriginalParent[obj]
+                if op then obj.Parent = op end
+            end
+        end
+    end)
+    pcall(function()
+        for obj, value in pairs(PerformanceBackup.OriginalProperties) do
+            if obj and obj.Parent then obj.Transparency = value end
+        end
+    end)
+    pcall(function()
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+    end)
+    PerformanceBackup.IsActive = false
+    PerformanceBackup.RemovedObjects = {}
+    PerformanceBackup.OriginalParent = {}
+    PerformanceBackup.OriginalProperties = {}
+end
+
+-- ============================================
+-- AUTO-DESEMPENHO INTELIGENTE (NOVO)
+-- ============================================
+
+-- Aplica nível de emergência (1=leve, 2=médio, 3=crítico)
+local function ApplyEmergencyLevel(level)
+    local AP = Settings.AutoPerformance
+    
+    if level >= 1 then
+        -- NÍVEL 1: Leve - Limpeza de cache
+        if AP.AutoClearCache then
+            spawn(function()
+                ManualClearCache()
+            end)
+        end
+    end
+    
+    if level >= 2 then
+        -- NÍVEL 2: Médio - Reduzir gráficos
+        if AP.AutoReduceGraphics then
+            pcall(function()
+                settings().Rendering.QualityLevel = Enum.QualityLevel.Level03
+            end)
+        end
+        
+        -- Desativar partículas
+        if AP.AutoDisableParticles then
+            pcall(function()
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("ParticleEmitter") then
+                        obj.Enabled = false
+                    end
+                end
+            end)
+        end
+        
+        -- Desativar sombras
+        if AP.AutoDisableShadows then
+            pcall(function()
+                Lighting.GlobalShadows = false
+            end)
+        end
+        
+        -- Otimizar rede
+        if AP.AutoOptimizeNetwork then
+            pcall(function()
+                Settings.NetworkOptimizer.LastOptimize = 0
+            end)
+        end
+    end
+    
+    if level >= 3 then
+        -- NÍVEL 3: Crítico - Ultra Desempenho total
+        if AP.AutoUltraPerformance then
+            pcall(function()
+                if not PerformanceBackup.IsActive then
+                    ApplyUltraPerformance()
+                end
+            end)
+        end
+        
+        -- Reduzir render distance
+        if AP.AutoReduceRender then
+            pcall(function()
+                settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+                settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+            end)
+        end
+        
+        -- GC agressivo
+        if AP.AutoBoostGC then
+            ForceGarbageCollect()
+            ForceGarbageCollect()
+            ForceGarbageCollect()
+        end
+        
+        -- Limpeza profunda
+        spawn(function()
+            ClearTextures()
+            ClearSounds()
+            ClearMeshes()
+            ClearAnimations()
+            ClearParticles()
+        end)
+    end
+end
+
+-- Verifica e age automaticamente
+local function CheckAndAct()
+    local AP = Settings.AutoPerformance
+    if not AP.Enabled then return end
+    
+    local now = tick()
+    if now - AP.LastCheck < AP.CheckInterval then return end
+    AP.LastCheck = now
+    
+    local currentFPS = AP.CurrentFPS
+    local currentMemory = GetMemoryMB()
+    local currentPing = GetPing()
+    
+    AP.CurrentMemoryMB = currentMemory
+    
+    -- Determinar nível de emergência
+    local emergencyLevel = 0
+    
+    -- FPS crítico
+    if currentFPS < AP.CriticalFPS then
+        emergencyLevel = 3
+    elseif currentFPS < AP.MinFPS then
+        emergencyLevel = math.max(emergencyLevel, 2)
+    elseif currentFPS < AP.TargetFPS * 0.7 then
+        emergencyLevel = math.max(emergencyLevel, 1)
+    end
+    
+    -- Memória crítica
+    if currentMemory > AP.CriticalMemoryMB then
+        emergencyLevel = math.max(emergencyLevel, 3)
+    elseif currentMemory > AP.MaxMemoryMB then
+        emergencyLevel = math.max(emergencyLevel, 2)
+    end
+    
+    -- Ping crítico
+    if currentPing > AP.MaxPing * 1.5 then
+        emergencyLevel = math.max(emergencyLevel, 3)
+    elseif currentPing > AP.MaxPing then
+        emergencyLevel = math.max(emergencyLevel, 2)
+    end
+    
+    AP.Level = emergencyLevel
+    
+    -- Executar ação se necessário
+    if emergencyLevel > 0 then
+        -- Verificar cooldown
+        if now - AP.LastAction < AP.ActionCooldown then return end
+        AP.LastAction = now
+        
+        -- Aplicar emergência
+        ApplyEmergencyLevel(emergencyLevel)
+        AP.TotalActions = AP.TotalActions + 1
+        
+        if emergencyLevel == 3 then
+            AP.EmergenciesTriggered = AP.EmergenciesTriggered + 1
+            Rayfield:Notify({
+                Title = "⚡ AUTO-DESEMPENHO",
+                Content = "🚨 EMERGÊNCIA! FPS: " .. currentFPS .. " | RAM: " .. currentMemory .. "MB",
+                Duration = 2,
+            })
+        end
+    else
+        -- Sistema normal - restaurar gradualmente
+        if AP.Level == 0 and AutoPerfBackup.GraphicsLevel then
+            -- Tentar restaurar gráficos suavemente
+            pcall(function()
+                if settings().Rendering.QualityLevel == Enum.QualityLevel.Level01 then
+                    if currentFPS > AP.TargetFPS * 0.9 and currentMemory < AP.MaxMemoryMB * 0.7 then
+                        settings().Rendering.QualityLevel = AutoPerfBackup.GraphicsLevel or Enum.QualityLevel.Automatic
+                    end
+                end
+            end)
+        end
+    end
+end
+
+local function StartAutoPerformance()
+    spawn(function()
+        while Settings.AutoPerformance.Enabled do
+            wait(Settings.AutoPerformance.CheckInterval or 1.5)
+            pcall(CheckAndAct)
+        end
+    end)
+end
+
+-- ============================================
 -- DETECÇÃO DE TIME
 -- ============================================
 
@@ -376,56 +848,34 @@ local function IsEnemy(player)
 end
 
 -- ============================================
--- FLY TRADICIONAL - CORRIGIDO (MOBILE + PC)
+-- FLY TRADICIONAL
 -- ============================================
 
--- FUNÇÃO MELHORADA: Detecta movimento de subir no mobile
-local function GetMobileMoveDirection()
-    -- Detecta se o jogador está tentando subir no mobile
-    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
-    if not humanoid then return Vector3.new(0, 0, 0) end
-    
-    local moveDir = humanoid.MoveDirection
-    return moveDir
-end
-
--- Inicia o Fly tradicional CORRIGIDO
 local function StartFly()
     if not Settings.Fly.Enabled then return end
     if not LocalPlayer.Character then return end
-    
     local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
     local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not humanoid or not rootPart then return end
     
-    -- Limpar anteriores
     if FlyBodyVelocity then FlyBodyVelocity:Destroy() FlyBodyVelocity = nil end
     if FlyBodyGyro then FlyBodyGyro:Destroy() FlyBodyGyro = nil end
     
-    -- BodyVelocity para movimento
     FlyBodyVelocity = Instance.new("BodyVelocity")
     FlyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
     FlyBodyVelocity.MaxForce = Vector3.new(50000, 50000, 50000)
     FlyBodyVelocity.P = 5000
     FlyBodyVelocity.Parent = rootPart
     
-    -- BodyGyro para manter orientação
     FlyBodyGyro = Instance.new("BodyGyro")
     FlyBodyGyro.MaxTorque = Vector3.new(0, 0, 0)
     FlyBodyGyro.P = 0
     FlyBodyGyro.D = 0
     FlyBodyGyro.Parent = rootPart
     
-    -- Ativar plataforma
     humanoid.PlatformStand = true
     humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-    
     FlyActive = true
-    Rayfield:Notify({
-        Title = "Fly",
-        Content = "✅ Fly ATIVADO! Use JUMP para subir",
-        Duration = 3,
-    })
 end
 
 local function StopFly()
@@ -436,52 +886,33 @@ local function StopFly()
         local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
         if humanoid then humanoid.PlatformStand = false end
     end
-    Rayfield:Notify({
-        Title = "Fly",
-        Content = "⏹️ Fly DESATIVADO",
-        Duration = 2,
-    })
 end
 
--- ATUALIZAÇÃO DO FLY - CORRIGIDA
 local function UpdateFly()
     if not FlyActive or not Settings.Fly.Enabled then return end
     if not FlyBodyVelocity or not LocalPlayer.Character then return end
-    
     local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if not rootPart then return end
     
     local speed = Settings.Fly.Speed or 100
     local velocity = Vector3.new(0, 0, 0)
     
-    -- SUBIR: Espaço (PC) ou Jump (Mobile) ou botão virtual
     if SpaceHeld or JumpHeld then
         velocity = Vector3.new(0, speed, 0)
     end
-    
-    -- DESCER: Shift (PC) - opcional
     if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
         velocity = Vector3.new(0, -speed, 0)
     end
     
-    -- MOVIMENTO HORIZONTAL (Mobile - direcional funciona normal)
     local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
     if humanoid then
         local moveDir = humanoid.MoveDirection
         if moveDir.Magnitude > 0 then
-            -- Adiciona movimento horizontal
-            local horizontalSpeed = speed * 0.8
-            velocity = velocity + Vector3.new(
-                moveDir.X * horizontalSpeed,
-                0,
-                moveDir.Z * horizontalSpeed
-            )
+            velocity = velocity + Vector3.new(moveDir.X * speed * 0.8, 0, moveDir.Z * speed * 0.8)
         end
     end
     
     FlyBodyVelocity.Velocity = velocity
-    
-    -- Manter personagem na vertical
     if FlyBodyGyro then
         FlyBodyGyro.CFrame = CFrame.new(rootPart.Position)
     end
@@ -742,117 +1173,6 @@ local function ApplySpeedAndJump()
     else h.WalkSpeed = 16 end
     if Settings.Jump.Enabled then h.JumpPower = Settings.Jump.Value
     else h.JumpPower = 50 end
-end
-
--- ============================================
--- ULTRA DESEMPENHO
--- ============================================
-
-local function ApplyUltraPerformance()
-    if PerformanceBackup.IsActive then return end
-    PerformanceBackup.IsActive = true
-    PerformanceBackup.RemovedObjects = {}
-    PerformanceBackup.OriginalParent = {}
-    PerformanceBackup.OriginalProperties = {}
-    
-    pcall(function()
-        PerformanceBackup.Lighting = {
-            GlobalShadows = Lighting.GlobalShadows,
-            Brightness = Lighting.Brightness,
-            Ambient = Lighting.Ambient,
-            OutdoorAmbient = Lighting.OutdoorAmbient,
-            FogEnd = Lighting.FogEnd, FogStart = Lighting.FogStart,
-            FogColor = Lighting.FogColor, ShadowSoftness = Lighting.ShadowSoftness,
-        }
-        Lighting.GlobalShadows = false
-        Lighting.Brightness = 0
-        Lighting.Ambient = Color3.fromRGB(180, 180, 180)
-        Lighting.OutdoorAmbient = Color3.fromRGB(180, 180, 180)
-        Lighting.FogEnd = 100000
-        Lighting.FogStart = 0
-        Lighting.ShadowSoftness = 0
-    end)
-    
-    pcall(function()
-        for _, child in pairs(Lighting:GetChildren()) do
-            if child:IsA("Atmosphere") or child:IsA("BloomEffect") or 
-               child:IsA("BlurEffect") or child:IsA("ColorCorrectionEffect") or 
-               child:IsA("SunRaysEffect") or child:IsA("DepthOfFieldEffect") or 
-               child:IsA("Sky") then
-                PerformanceBackup.OriginalParent[child] = child.Parent
-                child.Parent = nil
-                table.insert(PerformanceBackup.RemovedObjects, child)
-            end
-        end
-    end)
-    
-    pcall(function()
-        for _, obj in pairs(workspace:GetDescendants()) do
-            if Settings.UltraPerformance.RemoveTextures then
-                if obj:IsA("Decal") or obj:IsA("Texture") then
-                    PerformanceBackup.OriginalProperties[obj] = obj.Transparency
-                    obj.Transparency = 1
-                end
-            end
-            if Settings.UltraPerformance.RemoveParticles then
-                if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or 
-                   obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
-                    obj.Enabled = false
-                end
-            end
-            if Settings.UltraPerformance.RemoveSounds then
-                if obj:IsA("Sound") then obj.Volume = 0 end
-            end
-        end
-    end)
-    
-    pcall(function()
-        if Settings.UltraPerformance.RemoveTerrain then
-            local terrain = workspace:FindFirstChildOfClass("Terrain")
-            if terrain then
-                terrain.WaterWaveSize = 0
-                terrain.WaterWaveSpeed = 0
-                terrain.WaterReflectance = 0
-                terrain.WaterTransparency = 1
-                terrain.Decoration = false
-            end
-        end
-    end)
-    
-    pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-    end)
-    
-    print("✅ Ultra Desempenho ATIVADO!")
-end
-
-local function RemoveUltraPerformance()
-    if not PerformanceBackup.IsActive then return end
-    pcall(function()
-        for prop, value in pairs(PerformanceBackup.Lighting) do
-            Lighting[prop] = value
-        end
-    end)
-    pcall(function()
-        for _, obj in pairs(PerformanceBackup.RemovedObjects) do
-            if obj and obj.Parent == nil then
-                local op = PerformanceBackup.OriginalParent[obj]
-                if op then obj.Parent = op end
-            end
-        end
-    end)
-    pcall(function()
-        for obj, value in pairs(PerformanceBackup.OriginalProperties) do
-            if obj and obj.Parent then obj.Transparency = value end
-        end
-    end)
-    pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
-    end)
-    PerformanceBackup.IsActive = false
-    PerformanceBackup.RemovedObjects = {}
-    PerformanceBackup.OriginalParent = {}
-    PerformanceBackup.OriginalProperties = {}
 end
 
 -- ============================================
@@ -1188,22 +1508,15 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 -- ============================================
--- INPUTS (PC + MOBILE) - CORRIGIDO
+-- INPUTS
 -- ============================================
 
--- PC: Espaço para subir
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
-    
-    -- PC: ESPAÇO para subir
     if input.KeyCode == Enum.KeyCode.Space then
         SpaceHeld = true
-        if Settings.Fly.Enabled and not FlyActive then
-            StartFly()
-        end
+        if Settings.Fly.Enabled and not FlyActive then StartFly() end
     end
-    
-    -- PC: SHIFT para descer
     if input.KeyCode == Enum.KeyCode.LeftShift then
         FlyUpPressed = true
     end
@@ -1211,50 +1524,30 @@ end)
 
 UserInputService.InputEnded:Connect(function(input, gp)
     if gp then return end
-    
     if input.KeyCode == Enum.KeyCode.Space then
         SpaceHeld = false
     end
-    
     if input.KeyCode == Enum.KeyCode.LeftShift then
         FlyUpPressed = false
     end
 end)
 
--- MOBILE: BOTÃO JUMP para subir - CORRIGIDO
 UserInputService.JumpRequest:Connect(function()
-    -- Se Fly está ativo, sobe
     if Settings.Fly.Enabled then
-        if not FlyActive then
-            StartFly()
-        end
-        
+        if not FlyActive then StartFly() end
         JumpHeld = true
-        -- Manter ativo por 0.5 segundos (para segurar)
         spawn(function()
             wait(0.5)
             JumpHeld = false
         end)
     end
-    
-    -- Infinite Jump
-    if Settings.InfiniteJump.Enabled and not Settings.Fly.Enabled then
-        local c = LocalPlayer.Character
-        if c then
-            local h = c:FindFirstChild("Humanoid")
-            if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
-        end
-    end
 end)
 
--- Mobile: Botão de toque para Fly (área de toque superior)
 UserInputService.TouchStarted:Connect(function(touch, gp)
     if gp then return end
     if not Settings.Fly.Enabled then return end
-    
-    -- Área superior da tela = subir
-    local screenSize = Camera.ViewportSize
-    if touch.Position.Y < screenSize.Y * 0.3 then
+    local ss = Camera.ViewportSize
+    if touch.Position.Y < ss.Y * 0.3 then
         JumpHeld = true
     end
 end)
@@ -1262,9 +1555,8 @@ end)
 UserInputService.TouchEnded:Connect(function(touch, gp)
     if gp then return end
     if not Settings.Fly.Enabled then return end
-    
-    local screenSize = Camera.ViewportSize
-    if touch.Position.Y < screenSize.Y * 0.3 then
+    local ss = Camera.ViewportSize
+    if touch.Position.Y < ss.Y * 0.3 then
         JumpHeld = false
     end
 end)
@@ -1273,45 +1565,27 @@ end)
 -- LOOPS
 -- ============================================
 
-spawn(function() 
-    while wait(0.03) do 
-        UpdateFly() 
-    end 
-end)
+spawn(function() while wait(0.03) do UpdateFly() end end)
+spawn(function() while wait(0.03) do
+    if Settings.FlyPlayer.Enabled and FlyPlayerActive then UpdateFlyPlayer() end
+end end)
+spawn(function() while true do
+    wait(0.1)
+    if LocalPlayer.Character then ApplySpeedAndJump() end
+end end)
+spawn(function() while wait(0.15) do
+    if Settings.ESP.Enabled then UpdateESP() end
+end end)
+spawn(function() while wait(2) do
+    if Settings.ESP.Enabled then MonitorNewPlayers() end
+end end)
+spawn(function() while wait(5) do
+    PlayerTeam = nil
+    GetLocalTeam()
+end end)
 
-spawn(function() 
-    while wait(0.03) do
-        if Settings.FlyPlayer.Enabled and FlyPlayerActive then 
-            UpdateFlyPlayer() 
-        end
-    end 
-end)
-
-spawn(function() 
-    while true do
-        wait(0.1)
-        if LocalPlayer.Character then ApplySpeedAndJump() end
-    end 
-end)
-
-spawn(function() 
-    while wait(0.15) do
-        if Settings.ESP.Enabled then UpdateESP() end
-    end 
-end)
-
-spawn(function() 
-    while wait(2) do
-        if Settings.ESP.Enabled then MonitorNewPlayers() end
-    end 
-end)
-
-spawn(function() 
-    while wait(5) do
-        PlayerTeam = nil
-        GetLocalTeam()
-    end 
-end)
+-- Iniciar monitor de FPS
+StartFPSMonitor()
 
 -- ============================================
 -- LOOP PRINCIPAL
@@ -1343,6 +1617,175 @@ local function CreateUI()
     })
 
     -- ============================================
+    -- ABA: AUTO-DESEMPENHO (NOVA)
+    -- ============================================
+    
+    local AutoPerfTab = Window:CreateTab("🧠 Auto-Desempenho", 4483362458)
+    
+    AutoPerfTab:CreateSection("🧠 Auto-Desempenho Inteligente")
+    
+    AutoPerfTab:CreateToggle({
+        Name = "🧠 Ativar Auto-Desempenho",
+        CurrentValue = false,
+        Callback = function(v)
+            Settings.AutoPerformance.Enabled = v
+            if v then
+                Settings.AutoPerformance.LastCheck = 0
+                Settings.AutoPerformance.LastAction = 0
+                StartAutoPerformance()
+                Rayfield:Notify({
+                    Title = "🧠 AUTO-DESEMPENHO",
+                    Content = "✨ ATIVADO! Monitorando FPS, RAM e Ping...",
+                    Duration = 4,
+                })
+            else
+                Rayfield:Notify({
+                    Title = "🧠 AUTO-DESEMPENHO",
+                    Content = "⏹️ DESATIVADO",
+                    Duration = 2,
+                })
+            end
+        end
+    })
+    
+    AutoPerfTab:CreateSlider({
+        Name = "Verificar a cada",
+        Range = {1, 5},
+        Increment = 0.5,
+        Suffix = "s",
+        CurrentValue = 1.5,
+        Callback = function(v) Settings.AutoPerformance.CheckInterval = v end
+    })
+    
+    AutoPerfTab:CreateSlider({
+        Name = "FPS Mínimo",
+        Range = {15, 45},
+        Increment = 5,
+        Suffix = "fps",
+        CurrentValue = 25,
+        Callback = function(v) Settings.AutoPerformance.MinFPS = v end
+    })
+    
+    AutoPerfTab:CreateSlider({
+        Name = "FPS Alvo",
+        Range = {30, 120},
+        Increment = 5,
+        Suffix = "fps",
+        CurrentValue = 60,
+        Callback = function(v) Settings.AutoPerformance.TargetFPS = v end
+    })
+    
+    AutoPerfTab:CreateSlider({
+        Name = "RAM Máxima",
+        Range = {500, 3000},
+        Increment = 100,
+        Suffix = "MB",
+        CurrentValue = 1500,
+        Callback = function(v) Settings.AutoPerformance.MaxMemoryMB = v end
+    })
+    
+    AutoPerfTab:CreateSection("⚙️ Ações Automáticas")
+    
+    AutoPerfTab:CreateToggle({
+        Name = "Auto Limpar Cache",
+        CurrentValue = true,
+        Callback = function(v) Settings.AutoPerformance.AutoClearCache = v end
+    })
+    
+    AutoPerfTab:CreateToggle({
+        Name = "Auto Ultra Desempenho",
+        CurrentValue = true,
+        Callback = function(v) Settings.AutoPerformance.AutoUltraPerformance = v end
+    })
+    
+    AutoPerfTab:CreateToggle({
+        Name = "Auto Reduzir Gráficos",
+        CurrentValue = true,
+        Callback = function(v) Settings.AutoPerformance.AutoReduceGraphics = v end
+    })
+    
+    AutoPerfTab:CreateToggle({
+        Name = "Auto Otimizar Internet",
+        CurrentValue = true,
+        Callback = function(v) Settings.AutoPerformance.AutoOptimizeNetwork = v end
+    })
+    
+    AutoPerfTab:CreateToggle({
+        Name = "Auto Desativar Partículas",
+        CurrentValue = true,
+        Callback = function(v) Settings.AutoPerformance.AutoDisableParticles = v end
+    })
+    
+    AutoPerfTab:CreateToggle({
+        Name = "Auto Desativar Sombras",
+        CurrentValue = true,
+        Callback = function(v) Settings.AutoPerformance.AutoDisableShadows = v end
+    })
+    
+    AutoPerfTab:CreateToggle({
+        Name = "Auto Reduzir Render Distance",
+        CurrentValue = true,
+        Callback = function(v) Settings.AutoPerformance.AutoReduceRender = v end
+    })
+    
+    AutoPerfTab:CreateToggle({
+        Name = "Auto GC Agressivo",
+        CurrentValue = true,
+        Callback = function(v) Settings.AutoPerformance.AutoBoostGC = v end
+    })
+    
+    AutoPerfTab:CreateSection("📊 Estatísticas em Tempo Real")
+    
+    local fpsLabel = AutoPerfTab:CreateLabel("📊 FPS: 60")
+    local avgLabel = AutoPerfTab:CreateLabel("📈 Média FPS: 60")
+    local minMaxLabel = AutoPerfTab:CreateLabel("⬇️ Min: 60 | ⬆️ Max: 60")
+    local memLabel = AutoPerfTab:CreateLabel("💾 RAM: 0 MB")
+    local pingLabel = AutoPerfTab:CreateLabel("📡 Ping: 0 ms")
+    local levelLabel = AutoPerfTab:CreateLabel("🎯 Status: NORMAL")
+    local actionLabel = AutoPerfTab:CreateLabel("⚡ Ações: 0")
+    local emergLabel = AutoPerfTab:CreateLabel("🚨 Emergências: 0")
+    
+    spawn(function()
+        while wait(1) do
+            local AP = Settings.AutoPerformance
+            local fps = AP.CurrentFPS
+            local fpsColor = fps >= 50 and "✅" or fps >= 30 and "⚠️" or "🚨"
+            
+            if fpsLabel then fpsLabel:Set(fpsColor .. " FPS: " .. fps) end
+            if avgLabel then avgLabel:Set("📈 Média FPS: " .. AP.AvgFPS) end
+            if minMaxLabel then minMaxLabel:Set("⬇️ Min: " .. AP.MinFPSRecord .. " | ⬆️ Max: " .. AP.MaxFPSRecord) end
+            if memLabel then 
+                local mem = GetMemoryMB()
+                local memColor = mem < 1000 and "✅" or mem < 1800 and "⚠️" or "🚨"
+                memLabel:Set(memColor .. " RAM: " .. mem .. " MB") 
+            end
+            if pingLabel then 
+                local ping = GetPing()
+                local pingColor = ping < 100 and "✅" or ping < 200 and "⚠️" or "🚨"
+                pingLabel:Set(pingColor .. " Ping: " .. ping .. " ms") 
+            end
+            if levelLabel then
+                local status = AP.Level == 0 and "✅ NORMAL" 
+                    or AP.Level == 1 and "⚠️ LEVE" 
+                    or AP.Level == 2 and "⚠️ MÉDIO" 
+                    or "🚨 CRÍTICO"
+                levelLabel:Set("🎯 Status: " .. status)
+            end
+            if actionLabel then actionLabel:Set("⚡ Ações: " .. AP.TotalActions) end
+            if emergLabel then emergLabel:Set("🚨 Emergências: " .. AP.EmergenciesTriggered) end
+        end
+    end)
+    
+    AutoPerfTab:CreateLabel("")
+    AutoPerfTab:CreateLabel("💡 O sistema detecta quedas de FPS, RAM alta")
+    AutoPerfTab:CreateLabel("   e ping ruim automaticamente.")
+    AutoPerfTab:CreateLabel("")
+    AutoPerfTab:CreateLabel("🎯 Níveis de Ação:")
+    AutoPerfTab:CreateLabel("• ⚠️ LEVE: Limpa cache")
+    AutoPerfTab:CreateLabel("• ⚠️ MÉDIO: Reduz gráficos, partículas")
+    AutoPerfTab:CreateLabel("• 🚨 CRÍTICO: Ultra Desempenho total")
+
+    -- ============================================
     -- ABA: PERFORMANCE
     -- ============================================
     
@@ -1360,14 +1803,8 @@ local function CreateUI()
                 StartAutoRemoveCache()
                 Rayfield:Notify({
                     Title = "Auto Remove Cache",
-                    Content = "🧹 ATIVADO! Limpando a cada " .. Settings.AutoRemoveCache.Interval .. "s",
+                    Content = "🧹 ATIVADO!",
                     Duration = 3,
-                })
-            else
-                Rayfield:Notify({
-                    Title = "Auto Remove Cache",
-                    Content = "⏹️ DESATIVADO",
-                    Duration = 2,
                 })
             end
         end
@@ -1379,17 +1816,15 @@ local function CreateUI()
         Increment = 1,
         Suffix = "s",
         CurrentValue = 2,
-        Callback = function(v)
-            Settings.AutoRemoveCache.Interval = v
-        end
+        Callback = function(v) Settings.AutoRemoveCache.Interval = v end
     })
     
     PerformanceTab:CreateToggle({Name = "Limpar Texturas", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.ClearTextures = v end})
     PerformanceTab:CreateToggle({Name = "Limpar Sons", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.ClearSounds = v end})
-    PerformanceTab:CreateToggle({Name = "Limpar Meshes Distantes", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.ClearMeshes = v end})
+    PerformanceTab:CreateToggle({Name = "Limpar Meshes", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.ClearMeshes = v end})
     PerformanceTab:CreateToggle({Name = "Limpar Animações", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.ClearAnimations = v end})
     PerformanceTab:CreateToggle({Name = "Limpar Partículas", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.ClearParticles = v end})
-    PerformanceTab:CreateToggle({Name = "Forçar Garbage Collection", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.GarbageCollect = v end})
+    PerformanceTab:CreateToggle({Name = "Forçar GC", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.GarbageCollect = v end})
     
     PerformanceTab:CreateButton({
         Name = "🧹 Limpar Cache AGORA",
@@ -1410,7 +1845,7 @@ local function CreateUI()
         end
     end)
     
-    PerformanceTab:CreateSection("🌐 Otimizador de Internet")
+    PerformanceTab:CreateSection("🌐 Otimizador de Internet PRO")
     
     PerformanceTab:CreateToggle({
         Name = "🌐 Otimizar Internet/Ping",
@@ -1421,22 +1856,16 @@ local function CreateUI()
                 Settings.NetworkOptimizer.LastOptimize = 0
                 StartNetworkOptimizer()
                 Rayfield:Notify({
-                    Title = "🌐 Otimizador",
+                    Title = "🌐 Otimizador PRO",
                     Content = "🚀 ATIVADO!",
                     Duration = 3,
-                })
-            else
-                Rayfield:Notify({
-                    Title = "🌐 Otimizador",
-                    Content = "⏹️ DESATIVADO",
-                    Duration = 2,
                 })
             end
         end
     })
     
     PerformanceTab:CreateSlider({
-        Name = "Intervalo de Otimização",
+        Name = "Intervalo",
         Range = {1, 10},
         Increment = 1,
         Suffix = "s",
@@ -1446,23 +1875,27 @@ local function CreateUI()
     
     PerformanceTab:CreateToggle({Name = "Otimizar Ping", CurrentValue = true, Callback = function(v) Settings.NetworkOptimizer.OptimizePing = v end})
     PerformanceTab:CreateToggle({Name = "Reduzir Latência", CurrentValue = true, Callback = function(v) Settings.NetworkOptimizer.ReduceLatency = v end})
-    PerformanceTab:CreateToggle({Name = "Limpar Cache de Rede", CurrentValue = true, Callback = function(v) Settings.NetworkOptimizer.ClearNetworkCache = v end})
-    PerformanceTab:CreateToggle({Name = "Alertar Ping Alto", CurrentValue = false, Callback = function(v) Settings.NetworkOptimizer.AutoReconnect = v end})
+    PerformanceTab:CreateToggle({Name = "Limpar Cache Rede", CurrentValue = true, Callback = function(v) Settings.NetworkOptimizer.ClearNetworkCache = v end})
+    PerformanceTab:CreateToggle({Name = "Priorizar Banda", CurrentValue = true, Callback = function(v) Settings.NetworkOptimizer.BoostBandwidth = v end})
+    PerformanceTab:CreateToggle({Name = "Reduzir Perda de Pacotes", CurrentValue = true, Callback = function(v) Settings.NetworkOptimizer.ReducePacketLoss = v end})
+    PerformanceTab:CreateToggle({Name = "Compensar Jitter", CurrentValue = true, Callback = function(v) Settings.NetworkOptimizer.JitterCompensation = v end})
+    PerformanceTab:CreateToggle({Name = "Predição de Rede", CurrentValue = true, Callback = function(v) Settings.NetworkOptimizer.PredictNetwork = v end})
+    PerformanceTab:CreateToggle({Name = "Modo Baixa Latência", CurrentValue = true, Callback = function(v) Settings.NetworkOptimizer.LowLatencyMode = v end})
     
     PerformanceTab:CreateSection("📊 Estatísticas de Ping")
     
-    local pingLabel = PerformanceTab:CreateLabel("📡 Ping: 0ms")
-    local avgLabel = PerformanceTab:CreateLabel("📊 Média: 0ms")
-    local minMaxLabel = PerformanceTab:CreateLabel("⬇️ Min: 0ms | ⬆️ Max: 0ms")
-    local optLabel = PerformanceTab:CreateLabel("🚀 Otimizações: 0")
+    local pLabel = PerformanceTab:CreateLabel("📡 Ping: 0ms")
+    local pAvgLabel = PerformanceTab:CreateLabel("📊 Média: 0ms")
+    local pMinMaxLabel = PerformanceTab:CreateLabel("⬇️ Min: 0ms | ⬆️ Max: 0ms")
+    local pOptLabel = PerformanceTab:CreateLabel("🚀 Otimizações: 0")
     
     spawn(function()
         while wait(1) do
             local currentPing = GetPing()
-            if pingLabel then pingLabel:Set("📡 Ping: " .. currentPing .. "ms") end
-            if avgLabel then avgLabel:Set("📊 Média: " .. Settings.NetworkOptimizer.AvgPing .. "ms") end
-            if minMaxLabel then minMaxLabel:Set("⬇️ Min: " .. Settings.NetworkOptimizer.MinPing .. "ms | ⬆️ Max: " .. Settings.NetworkOptimizer.MaxPing .. "ms") end
-            if optLabel then optLabel:Set("🚀 Otimizações: " .. Settings.NetworkOptimizer.TotalOptimizations) end
+            if pLabel then pLabel:Set("📡 Ping: " .. currentPing .. "ms") end
+            if pAvgLabel then pAvgLabel:Set("📊 Média: " .. Settings.NetworkOptimizer.AvgPing .. "ms") end
+            if pMinMaxLabel then pMinMaxLabel:Set("⬇️ Min: " .. Settings.NetworkOptimizer.MinPing .. "ms | ⬆️ Max: " .. Settings.NetworkOptimizer.MaxPing .. "ms") end
+            if pOptLabel then pOptLabel:Set("🚀 Otimizações: " .. Settings.NetworkOptimizer.TotalOptimizations) end
         end
     end)
     
@@ -1546,51 +1979,24 @@ local function CreateUI()
     MoveTab:CreateSlider({Name = "Altura", Range = {50, 300}, Increment = 10, Suffix = "JumpPower", CurrentValue = 150, Callback = function(v) Settings.Jump.Value = v ApplySpeedAndJump() end})
     MoveTab:CreateToggle({Name = "Infinite Jump", CurrentValue = false, Callback = function(v) Settings.InfiniteJump.Enabled = v end})
     
-    -- ============================================
-    -- FLY CORRIGIDO
-    -- ============================================
-    
     MoveTab:CreateSection("🚀 Fly (CORRIGIDO)")
-    
-    MoveTab:CreateToggle({
-        Name = "Fly - Voar para Cima",
-        CurrentValue = false,
-        Callback = function(v)
-            Settings.Fly.Enabled = v
-            if v then
-                StartFly()
-            else
-                if FlyActive then StopFly() end
-            end
-        end
-    })
-    
-    MoveTab:CreateSlider({
-        Name = "Velocidade do Fly",
-        Range = {50, 300},
-        Increment = 10,
-        Suffix = "studs/s",
-        CurrentValue = 100,
-        Callback = function(v) Settings.Fly.Speed = v end
-    })
-    
+    MoveTab:CreateToggle({Name = "Fly - Voar para Cima", CurrentValue = false, Callback = function(v)
+        Settings.Fly.Enabled = v
+        if v then StartFly() else if FlyActive then StopFly() end end
+    end})
+    MoveTab:CreateSlider({Name = "Velocidade do Fly", Range = {50, 300}, Increment = 10, Suffix = "studs/s", CurrentValue = 100, Callback = function(v) Settings.Fly.Speed = v end})
     MoveTab:CreateLabel("📱 MOBILE: Segure o BOTÃO JUMP para subir")
-    MoveTab:CreateLabel("📱 MOBILE: Toque na parte SUPERIOR da tela")
+    MoveTab:CreateLabel("📱 MOBILE: Toque no TOPO da tela")
     MoveTab:CreateLabel("💻 PC: Segure ESPAÇO")
     MoveTab:CreateLabel("💻 PC: SHIFT para descer")
     
-    -- ============================================
-    -- FLY PLAYER (HOVER)
-    -- ============================================
-    
     MoveTab:CreateSection("✈️ Fly Player (Hover)")
-    
     MoveTab:CreateToggle({Name = "Fly Player (Hover)", CurrentValue = false, Callback = function(v)
         Settings.FlyPlayer.Enabled = v
         if v then StartFlyPlayer() else StopFlyPlayer() end
     end})
     MoveTab:CreateToggle({Name = "Anti-Reset Fly", CurrentValue = true, Callback = function(v) Settings.FlyPlayer.AntiReset = v end})
-    MoveTab:CreateToggle({Name = "Anti-Fall (Não Cai)", CurrentValue = true, Callback = function(v) Settings.FlyPlayer.AntiFall = v end})
+    MoveTab:CreateToggle({Name = "Anti-Fall", CurrentValue = true, Callback = function(v) Settings.FlyPlayer.AntiFall = v end})
     MoveTab:CreateSlider({Name = "Altura no Ar", Range = {5, 100}, Increment = 5, Suffix = "studs", CurrentValue = 10, Callback = function(v)
         Settings.FlyPlayer.Height = v
         if FlyPlayerActive and LocalPlayer.Character then
@@ -1598,7 +2004,7 @@ local function CreateUI()
             if rp then CurrentHeight = rp.Position.Y + v end
         end
     end})
-    MoveTab:CreateSlider({Name = "Velocidade de Movimento", Range = {10, 150}, Increment = 5, Suffix = "studs/s", CurrentValue = 50, Callback = function(v) Settings.FlyPlayer.MoveSpeed = v end})
+    MoveTab:CreateSlider({Name = "Velocidade", Range = {10, 150}, Increment = 5, Suffix = "studs/s", CurrentValue = 50, Callback = function(v) Settings.FlyPlayer.MoveSpeed = v end})
 
     -- ============================================
     -- ABA: SCRIPTS
@@ -1635,32 +2041,34 @@ local function CreateUI()
     -- ============================================
     
     local AboutTab = Window:CreateTab("ℹ️ Sobre", 4483362458)
-    AboutTab:CreateLabel("⚡ ComandoGame Mobile v23.0")
+    AboutTab:CreateLabel("⚡ ComandoGame Mobile v24.0")
     AboutTab:CreateLabel("👤 Criador: Mk_gaming")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("🆕 NOVIDADES:")
-    AboutTab:CreateLabel("✅ FLY CORRIGIDO!")
-    AboutTab:CreateLabel("• Mobile: Botão Jump sobe")
-    AboutTab:CreateLabel("• Mobile: Toca no topo da tela")
-    AboutTab:CreateLabel("• PC: Segure ESPAÇO")
-    AboutTab:CreateLabel("• PC: SHIFT desce")
+    AboutTab:CreateLabel("🆕 NOVIDADES v24.0:")
+    AboutTab:CreateLabel("🧠 AUTO-DESEMPENHO INTELIGENTE")
+    AboutTab:CreateLabel("🌐 Otimizador de Internet PRO")
+    AboutTab:CreateLabel("📊 Monitoramento em tempo real")
+    AboutTab:CreateLabel("🚨 3 níveis de emergência")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("🧹 Auto Remove Cache (2s)")
-    AboutTab:CreateLabel("🌐 Otimizador de Internet")
-    AboutTab:CreateLabel("🚀 Ultra Desempenho")
-    AboutTab:CreateLabel("✈️ Fly Player (Hover)")
+    AboutTab:CreateLabel("📈 Como funciona:")
+    AboutTab:CreateLabel("• Detecta FPS baixo automaticamente")
+    AboutTab:CreateLabel("• Monitora RAM e Ping")
+    AboutTab:CreateLabel("• Age em milissegundos")
+    AboutTab:CreateLabel("• Restaura quando melhora")
+    AboutTab:CreateLabel("")
+    AboutTab:CreateLabel("🎯 Use 'Auto-Desempenho' para")
+    AboutTab:CreateLabel("   jogar sem preocupação!")
 end
 
 CreateUI()
 
 Rayfield:Notify({
     Title = "ComandoGame Mobile",
-    Content = "⚡ v23.0 - FLY CORRIGIDO!",
-    Duration = 4,
+    Content = "⚡ v24.0 - AUTO-DESEMPENHO INTELIGENTE!",
+    Duration = 5,
 })
 
-print("✅ ComandoGame Mobile v23.0 carregado!")
-print("🚀 FLY CORRIGIDO!")
-print("📱 Mobile: Segure BOTÃO JUMP para subir")
-print("📱 Mobile: Toque no TOPO da tela para subir")
-print("💻 PC: Segure ESPAÇO")
+print("✅ ComandoGame Mobile v24.0 carregado!")
+print("🧠 AUTO-DESEMPENHO INTELIGENTE disponível!")
+print("🌐 Otimizador de Internet PRO!")
+print("📊 Monitora FPS, RAM e Ping em tempo real")
