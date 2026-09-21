@@ -2,7 +2,7 @@
     COMANDOGAME - MOBILE EDITION
     Versão: 23.0.0
     Criador: Mk_gaming
-    FLY LIVRE CORRIGIDO - Controle total no mobile
+    Fly CORRIGIDO (mobile + PC) + Tudo mantido
 ]]
 
 -- ============================================
@@ -18,6 +18,7 @@ local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local Lighting = game:GetService("Lighting")
 local Stats = game:GetService("Stats")
+local VirtualUser = game:GetService("VirtualUser")
 
 -- ============================================
 -- CONFIGURAÇÕES
@@ -31,13 +32,7 @@ local Settings = {
     Noclip = { Enabled = false },
     Speed = { Enabled = false, Value = 300 },
     Jump = { Enabled = false, Value = 150 },
-    Fly = { 
-        Enabled = false, 
-        Speed = 100,
-        UpSpeed = 80,
-        DownSpeed = 80,
-        FreeMode = true, -- ⚡ NOVO: modo livre
-    },
+    Fly = { Enabled = false, Speed = 100 },
     ESP = { Enabled = false, MaxDistance = 100000 },
     NoFog = { Enabled = false },
     UltraPerformance = {
@@ -48,17 +43,21 @@ local Settings = {
         RemoveBillboards = true, RemovePostFX = true, LowQuality = true,
     },
     AutoRemoveCache = {
-        Enabled = false, Interval = 2,
+        Enabled = false,
+        Interval = 2,
         ClearTextures = true, ClearSounds = true, ClearMeshes = true,
-        ClearAnimations = true, ClearParticles = true, GarbageCollect = true,
+        ClearAnimations = true, ClearParticles = true,
+        GarbageCollect = true,
         LastClear = 0, TotalClears = 0, MemorySaved = 0,
     },
     NetworkOptimizer = {
-        Enabled = false, Interval = 2,
-        OptimizePing = true, ReduceLatency = true, BoostNetwork = true,
-        ClearNetworkCache = true, AutoReconnect = false, MaxPing = 300,
-        LastOptimize = 0, TotalOptimizations = 0, PingHistory = {},
-        AvgPing = 0, MinPing = 9999, MaxPing = 0, LastPing = 0,
+        Enabled = false,
+        Interval = 2,
+        OptimizePing = true, ReduceLatency = true,
+        ClearNetworkCache = true, AutoReconnect = false,
+        MaxPing = 300,
+        LastOptimize = 0, TotalOptimizations = 0,
+        PingHistory = {}, AvgPing = 0, MinPing = 9999, MaxPing = 0, LastPing = 0,
     },
 }
 
@@ -84,172 +83,250 @@ local CurrentTarget = nil
 local JumpHeld = false
 local CurrentHeight = 0
 local CentHubLoaded = false
-local FlyUpHeld = false
-local FlyDownHeld = false
+local MobileFlyActive = false
+local FlyUpPressed = false
+
+local PerformanceBackup = {
+    Lighting = {}, RemovedObjects = {}, OriginalParent = {},
+    OriginalProperties = {}, TerrainBackup = nil, IsActive = false,
+}
+
+local CacheStats = {
+    Textures = 0, Sounds = 0, Meshes = 0, Animations = 0,
+    TotalCleared = 0, LastGC = 0,
+}
 
 -- ============================================
--- CONTROLE DE FLY LIVRE (NOVO)
+-- FUNÇÃO DE PING
 -- ============================================
 
--- Pega a direção que o jogador está andando
-local function GetMoveDirection()
-    if not LocalPlayer.Character then return Vector3.new(0, 0, 0) end
-    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-    if not humanoid then return Vector3.new(0, 0, 0) end
-    return humanoid.MoveDirection
-end
-
--- Pega a direção da câmera (para onde você olha)
-local function GetCameraDirection()
-    if not Camera then return Vector3.new(0, 0, 0) end
-    local look = Camera.CFrame.LookVector
-    local right = Camera.CFrame.RightVector
-    return look, right
-end
-
--- ============================================
--- FLY LIVRE (CORRIGIDO)
--- ============================================
-
-local function StartFly()
-    if not Settings.Fly.Enabled then return end
-    if not LocalPlayer.Character then return end
-    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-    local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not humanoid or not rootPart then return end
-    
-    -- Limpar anteriores
-    if FlyBodyVelocity then FlyBodyVelocity:Destroy() end
-    if FlyBodyGyro then FlyBodyGyro:Destroy() end
-    
-    -- BodyVelocity para movimento livre
-    FlyBodyVelocity = Instance.new("BodyVelocity")
-    FlyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
-    FlyBodyVelocity.MaxForce = Vector3.new(100000, 100000, 100000)
-    FlyBodyVelocity.P = 5000
-    FlyBodyVelocity.Parent = rootPart
-    
-    -- BodyGyro para manter orientação estável
-    FlyBodyGyro = Instance.new("BodyGyro")
-    FlyBodyGyro.MaxTorque = Vector3.new(400000, 400000, 400000)
-    FlyBodyGyro.P = 10000
-    FlyBodyGyro.D = 100
-    FlyBodyGyro.CFrame = rootPart.CFrame
-    FlyBodyGyro.Parent = rootPart
-    
-    FlyActive = true
-    humanoid.PlatformStand = true
-    humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-    
-    Rayfield:Notify({
-        Title = "✈️ Fly Livre",
-        Content = "✅ ATIVADO! Use o direcional para voar livremente",
-        Duration = 3,
-    })
-end
-
-local function StopFly()
-    if FlyBodyVelocity then
-        FlyBodyVelocity:Destroy()
-        FlyBodyVelocity = nil
+local function GetPing()
+    local ping = 0
+    pcall(function()
+        ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
+    end)
+    if ping == 0 then
+        pcall(function()
+            ping = LocalPlayer:GetNetworkPing() * 1000
+        end)
     end
-    if FlyBodyGyro then
-        FlyBodyGyro:Destroy()
-        FlyBodyGyro = nil
-    end
-    FlyActive = false
+    return math.floor(ping or 0)
+end
+
+-- ============================================
+-- OTIMIZADOR DE INTERNET
+-- ============================================
+
+local function OptimizeNetwork()
+    if not Settings.NetworkOptimizer.Enabled then return end
+    local now = tick()
+    if now - Settings.NetworkOptimizer.LastOptimize < Settings.NetworkOptimizer.Interval then return end
+    Settings.NetworkOptimizer.LastOptimize = now
     
-    if LocalPlayer.Character then
-        local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-        if humanoid then
-            humanoid.PlatformStand = false
-            humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+    local currentPing = GetPing()
+    Settings.NetworkOptimizer.LastPing = currentPing
+    
+    table.insert(Settings.NetworkOptimizer.PingHistory, currentPing)
+    if #Settings.NetworkOptimizer.PingHistory > 10 then
+        table.remove(Settings.NetworkOptimizer.PingHistory, 1)
+    end
+    
+    local total = 0
+    for _, p in pairs(Settings.NetworkOptimizer.PingHistory) do total = total + p end
+    Settings.NetworkOptimizer.AvgPing = math.floor(total / #Settings.NetworkOptimizer.PingHistory)
+    
+    if currentPing < Settings.NetworkOptimizer.MinPing then
+        Settings.NetworkOptimizer.MinPing = currentPing
+    end
+    if currentPing > Settings.NetworkOptimizer.MaxPing then
+        Settings.NetworkOptimizer.MaxPing = currentPing
+    end
+    
+    pcall(function()
+        if Settings.NetworkOptimizer.ClearNetworkCache then
+            if Settings.AutoRemoveCache.GarbageCollect then
+                collectgarbage("collect")
+            end
         end
-    end
+    end)
+    
+    Settings.NetworkOptimizer.TotalOptimizations = Settings.NetworkOptimizer.TotalOptimizations + 1
+end
+
+local function StartNetworkOptimizer()
+    spawn(function()
+        while Settings.NetworkOptimizer.Enabled do
+            wait(Settings.NetworkOptimizer.Interval or 2)
+            pcall(OptimizeNetwork)
+        end
+    end)
+end
+
+-- ============================================
+-- AUTO REMOVE CACHE
+-- ============================================
+
+local function ClearTextures()
+    local count = 0
+    pcall(function()
+        for _, obj in pairs(game:GetDescendants()) do
+            if obj:IsA("Decal") or obj:IsA("Texture") then
+                if obj.Transparency >= 1 and obj.Texture ~= "" then
+                    obj.Texture = ""
+                    count = count + 1
+                end
+            end
+            if obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
+                if obj.Visible == false and obj.Image ~= "" then
+                    obj.Image = ""
+                    count = count + 1
+                end
+            end
+        end
+    end)
+    return count
+end
+
+local function ClearSounds()
+    local count = 0
+    pcall(function()
+        for _, obj in pairs(game:GetDescendants()) do
+            if obj:IsA("Sound") and not obj.Playing then
+                if obj.SoundId ~= "" then
+                    obj.SoundId = ""
+                    count = count + 1
+                end
+            end
+        end
+    end)
+    return count
+end
+
+local function ClearMeshes()
+    local count = 0
+    local localRoot = nil
+    pcall(function()
+        if LocalPlayer.Character then
+            localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+        end
+    end)
+    pcall(function()
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("MeshPart") and localRoot then
+                local dist = (obj.Position - localRoot.Position).Magnitude
+                if dist > 300 then
+                    if obj.TextureID ~= "" then
+                        obj.TextureID = ""
+                        count = count + 1
+                    end
+                end
+            end
+        end
+    end)
+    return count
+end
+
+local function ClearAnimations()
+    local count = 0
+    pcall(function()
+        for _, obj in pairs(game:GetDescendants()) do
+            if obj:IsA("Animation") and obj.AnimationId ~= "" then
+                if not obj.Parent or (not obj.Parent:IsA("Humanoid") and not obj.Parent:IsA("AnimationController")) then
+                    obj.AnimationId = ""
+                    count = count + 1
+                end
+            end
+        end
+    end)
+    return count
+end
+
+local function ClearParticles()
+    local count = 0
+    pcall(function()
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if obj:IsA("ParticleEmitter") and not obj.Enabled then
+                obj:Clear()
+                count = count + 1
+            end
+            if obj:IsA("Trail") and not obj.Enabled then
+                obj:Clear()
+                count = count + 1
+            end
+        end
+    end)
+    return count
+end
+
+local function ForceGarbageCollect()
+    pcall(function()
+        for i = 1, 5 do
+            collectgarbage("collect")
+        end
+        collectgarbage("count")
+    end)
+end
+
+local function AutoClearCache()
+    if not Settings.AutoRemoveCache.Enabled then return end
+    local now = tick()
+    if now - Settings.AutoRemoveCache.LastClear < Settings.AutoRemoveCache.Interval then return end
+    Settings.AutoRemoveCache.LastClear = now
+    
+    local totalCleared = 0
+    local memBefore = 0
+    pcall(function() memBefore = collectgarbage("count") end)
+    
+    if Settings.AutoRemoveCache.ClearTextures then totalCleared = totalCleared + ClearTextures() end
+    if Settings.AutoRemoveCache.ClearSounds then totalCleared = totalCleared + ClearSounds() end
+    if Settings.AutoRemoveCache.ClearMeshes then totalCleared = totalCleared + ClearMeshes() end
+    if Settings.AutoRemoveCache.ClearAnimations then totalCleared = totalCleared + ClearAnimations() end
+    if Settings.AutoRemoveCache.ClearParticles then totalCleared = totalCleared + ClearParticles() end
+    if Settings.AutoRemoveCache.GarbageCollect then ForceGarbageCollect() end
+    
+    local memAfter = 0
+    pcall(function() memAfter = collectgarbage("count") end)
+    local saved = memBefore - memAfter
+    if saved > 0 then Settings.AutoRemoveCache.MemorySaved = Settings.AutoRemoveCache.MemorySaved + saved end
+    
+    Settings.AutoRemoveCache.TotalClears = Settings.AutoRemoveCache.TotalClears + 1
+    CacheStats.TotalCleared = CacheStats.TotalCleared + totalCleared
+end
+
+local function StartAutoRemoveCache()
+    spawn(function()
+        while Settings.AutoRemoveCache.Enabled do
+            wait(Settings.AutoRemoveCache.Interval or 2)
+            pcall(AutoClearCache)
+        end
+    end)
+end
+
+local function ManualClearCache()
+    local totalCleared = 0
+    local memBefore = 0
+    pcall(function() memBefore = collectgarbage("count") end)
+    
+    totalCleared = totalCleared + ClearTextures()
+    totalCleared = totalCleared + ClearSounds()
+    totalCleared = totalCleared + ClearMeshes()
+    totalCleared = totalCleared + ClearAnimations()
+    totalCleared = totalCleared + ClearParticles()
+    
+    ForceGarbageCollect()
+    ForceGarbageCollect()
+    ForceGarbageCollect()
+    
+    local memAfter = 0
+    pcall(function() memAfter = collectgarbage("count") end)
+    local saved = math.max(0, memBefore - memAfter)
     
     Rayfield:Notify({
-        Title = "✈️ Fly Livre",
-        Content = "⏹️ DESATIVADO",
-        Duration = 2,
+        Title = "🧹 Limpeza Manual",
+        Content = "📦 " .. totalCleared .. " objetos removidos\n💾 " .. math.floor(saved) .. " KB liberados",
+        Duration = 4,
     })
 end
-
--- Atualizar Fly LIVRE (movimento total)
-local function UpdateFly()
-    if not FlyActive or not Settings.Fly.Enabled then return end
-    if not FlyBodyVelocity or not FlyBodyGyro then return end
-    if not LocalPlayer.Character then return end
-    
-    local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
-    if not rootPart or not humanoid then return end
-    
-    -- Se morrer, para o fly
-    if humanoid.Health <= 0 then
-        StopFly()
-        return
-    end
-    
-    local speed = Settings.Fly.Speed or 100
-    local upSpeed = Settings.Fly.UpSpeed or 80
-    local downSpeed = Settings.Fly.DownSpeed or 80
-    
-    -- ===== MOVIMENTO LIVRE =====
-    -- Pega a direção que o jogador está tentando andar
-    local moveDir = humanoid.MoveDirection
-    
-    -- Pega a direção da câmera
-    local camLook, camRight = GetCameraDirection()
-    
-    -- Converte movimento do jogador para direção no mundo
-    local velocity = Vector3.new(0, 0, 0)
-    
-    if moveDir.Magnitude > 0 then
-        -- Movimento horizontal baseado na câmera
-        local horizontalDir = moveDir
-        velocity = velocity + (horizontalDir * speed)
-    end
-    
-    -- ===== SUBIR E DESCER =====
-    if SpaceHeld or JumpHeld then
-        velocity = velocity + Vector3.new(0, upSpeed, 0)
-    end
-    
-    if FlyDownHeld then
-        velocity = velocity - Vector3.new(0, downSpeed, 0)
-    end
-    
-    -- Aplicar velocidade
-    FlyBodyVelocity.Velocity = velocity
-    
-    -- ===== MANTER ORIENTAÇÃO =====
-    -- O BodyGyro mantém o jogador na direção da câmera
-    -- Mas não força a rotação quando parado
-    if FlyBodyGyro then
-        -- Mantém a orientação baseada na câmera
-        local camCFrame = Camera.CFrame
-        FlyBodyGyro.CFrame = CFrame.new(rootPart.Position, rootPart.Position + camCFrame.LookVector)
-    end
-end
-
--- ============================================
--- DETECÇÃO DE TECLAS PARA FLY
--- ============================================
-
--- Tecla Q para descer (PC)
-UserInputService.InputBegan:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.Q then
-        FlyDownHeld = true
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input, gp)
-    if gp then return end
-    if input.KeyCode == Enum.KeyCode.Q then
-        FlyDownHeld = false
-    end
-end)
 
 -- ============================================
 -- DETECÇÃO DE TIME
@@ -299,283 +376,115 @@ local function IsEnemy(player)
 end
 
 -- ============================================
--- FUNÇÃO DE PING
+-- FLY TRADICIONAL - CORRIGIDO (MOBILE + PC)
 -- ============================================
 
-local function GetPing()
-    local ping = 0
-    pcall(function()
-        ping = Stats.Network.ServerStatsItem["Data Ping"]:GetValue()
-    end)
-    if ping == 0 then
-        pcall(function()
-            ping = LocalPlayer:GetNetworkPing() * 1000
-        end)
-    end
-    return math.floor(ping or 0)
+-- FUNÇÃO MELHORADA: Detecta movimento de subir no mobile
+local function GetMobileMoveDirection()
+    -- Detecta se o jogador está tentando subir no mobile
+    local humanoid = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Humanoid")
+    if not humanoid then return Vector3.new(0, 0, 0) end
+    
+    local moveDir = humanoid.MoveDirection
+    return moveDir
 end
 
--- ============================================
--- OTIMIZADOR DE INTERNET
--- ============================================
-
-local function OptimizeNetwork()
-    if not Settings.NetworkOptimizer.Enabled then return end
-    local now = tick()
-    if now - Settings.NetworkOptimizer.LastOptimize < Settings.NetworkOptimizer.Interval then return end
-    Settings.NetworkOptimizer.LastOptimize = now
+-- Inicia o Fly tradicional CORRIGIDO
+local function StartFly()
+    if not Settings.Fly.Enabled then return end
+    if not LocalPlayer.Character then return end
     
-    local currentPing = GetPing()
-    Settings.NetworkOptimizer.LastPing = currentPing
+    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+    local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not rootPart then return end
     
-    table.insert(Settings.NetworkOptimizer.PingHistory, currentPing)
-    if #Settings.NetworkOptimizer.PingHistory > 10 then
-        table.remove(Settings.NetworkOptimizer.PingHistory, 1)
-    end
+    -- Limpar anteriores
+    if FlyBodyVelocity then FlyBodyVelocity:Destroy() FlyBodyVelocity = nil end
+    if FlyBodyGyro then FlyBodyGyro:Destroy() FlyBodyGyro = nil end
     
-    local total = 0
-    for _, p in pairs(Settings.NetworkOptimizer.PingHistory) do total = total + p end
-    Settings.NetworkOptimizer.AvgPing = math.floor(total / #Settings.NetworkOptimizer.PingHistory)
+    -- BodyVelocity para movimento
+    FlyBodyVelocity = Instance.new("BodyVelocity")
+    FlyBodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    FlyBodyVelocity.MaxForce = Vector3.new(50000, 50000, 50000)
+    FlyBodyVelocity.P = 5000
+    FlyBodyVelocity.Parent = rootPart
     
-    if currentPing < Settings.NetworkOptimizer.MinPing then Settings.NetworkOptimizer.MinPing = currentPing end
-    if currentPing > Settings.NetworkOptimizer.MaxPing then Settings.NetworkOptimizer.MaxPing = currentPing end
+    -- BodyGyro para manter orientação
+    FlyBodyGyro = Instance.new("BodyGyro")
+    FlyBodyGyro.MaxTorque = Vector3.new(0, 0, 0)
+    FlyBodyGyro.P = 0
+    FlyBodyGyro.D = 0
+    FlyBodyGyro.Parent = rootPart
     
-    Settings.NetworkOptimizer.TotalOptimizations = Settings.NetworkOptimizer.TotalOptimizations + 1
-end
-
-local function StartNetworkOptimizer()
-    spawn(function()
-        while Settings.NetworkOptimizer.Enabled do
-            wait(Settings.NetworkOptimizer.Interval or 2)
-            pcall(OptimizeNetwork)
-        end
-    end)
-end
-
--- ============================================
--- AUTO REMOVE CACHE
--- ============================================
-
-local function ClearTextures()
-    local c = 0
-    pcall(function()
-        for _, o in pairs(game:GetDescendants()) do
-            if o:IsA("Decal") or o:IsA("Texture") then
-                if o.Transparency >= 1 and o.Texture ~= "" then o.Texture = "" c = c + 1 end
-            end
-        end
-    end)
-    return c
-end
-
-local function ClearSounds()
-    local c = 0
-    pcall(function()
-        for _, o in pairs(game:GetDescendants()) do
-            if o:IsA("Sound") and not o.Playing and o.SoundId ~= "" then
-                o.SoundId = "" c = c + 1
-            end
-        end
-    end)
-    return c
-end
-
-local function ClearMeshes()
-    local c = 0
-    local rp = nil
-    pcall(function()
-        if LocalPlayer.Character then rp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart") end
-    end)
-    pcall(function()
-        for _, o in pairs(workspace:GetDescendants()) do
-            if o:IsA("MeshPart") and rp then
-                if (o.Position - rp.Position).Magnitude > 300 and o.TextureID ~= "" then
-                    o.TextureID = "" c = c + 1
-                end
-            end
-        end
-    end)
-    return c
-end
-
-local function ClearAnimations()
-    local c = 0
-    pcall(function()
-        for _, o in pairs(game:GetDescendants()) do
-            if o:IsA("Animation") and o.AnimationId ~= "" then
-                if not o.Parent or (not o.Parent:IsA("Humanoid") and not o.Parent:IsA("AnimationController")) then
-                    o.AnimationId = "" c = c + 1
-                end
-            end
-        end
-    end)
-    return c
-end
-
-local function ClearParticles()
-    local c = 0
-    pcall(function()
-        for _, o in pairs(workspace:GetDescendants()) do
-            if o:IsA("ParticleEmitter") and not o.Enabled then o:Clear() c = c + 1 end
-            if o:IsA("Trail") and not o.Enabled then o:Clear() c = c + 1 end
-        end
-    end)
-    return c
-end
-
-local function ForceGC()
-    pcall(function()
-        for i = 1, 5 do collectgarbage("collect") end
-    end)
-end
-
-local function AutoClearCache()
-    if not Settings.AutoRemoveCache.Enabled then return end
-    local now = tick()
-    if now - Settings.AutoRemoveCache.LastClear < Settings.AutoRemoveCache.Interval then return end
-    Settings.AutoRemoveCache.LastClear = now
+    -- Ativar plataforma
+    humanoid.PlatformStand = true
+    humanoid:ChangeState(Enum.HumanoidStateType.Physics)
     
-    local total = 0
-    local memBefore = 0
-    pcall(function() memBefore = collectgarbage("count") end)
-    
-    if Settings.AutoRemoveCache.ClearTextures then total = total + ClearTextures() end
-    if Settings.AutoRemoveCache.ClearSounds then total = total + ClearSounds() end
-    if Settings.AutoRemoveCache.ClearMeshes then total = total + ClearMeshes() end
-    if Settings.AutoRemoveCache.ClearAnimations then total = total + ClearAnimations() end
-    if Settings.AutoRemoveCache.ClearParticles then total = total + ClearParticles() end
-    if Settings.AutoRemoveCache.GarbageCollect then ForceGC() end
-    
-    local memAfter = 0
-    pcall(function() memAfter = collectgarbage("count") end)
-    
-    local saved = math.max(0, memBefore - memAfter)
-    Settings.AutoRemoveCache.MemorySaved = Settings.AutoRemoveCache.MemorySaved + saved
-    Settings.AutoRemoveCache.TotalClears = Settings.AutoRemoveCache.TotalClears + 1
-end
-
-local function StartAutoRemoveCache()
-    spawn(function()
-        while Settings.AutoRemoveCache.Enabled do
-            wait(Settings.AutoRemoveCache.Interval or 2)
-            pcall(AutoClearCache)
-        end
-    end)
-end
-
-local function ManualClearCache()
-    local total = 0
-    local memBefore = 0
-    pcall(function() memBefore = collectgarbage("count") end)
-    
-    total = total + ClearTextures()
-    total = total + ClearSounds()
-    total = total + ClearMeshes()
-    total = total + ClearAnimations()
-    total = total + ClearParticles()
-    ForceGC() ForceGC() ForceGC()
-    
-    local memAfter = 0
-    pcall(function() memAfter = collectgarbage("count") end)
-    local saved = math.max(0, memBefore - memAfter)
-    
+    FlyActive = true
     Rayfield:Notify({
-        Title = "🧹 Limpeza Manual",
-        Content = "📦 " .. total .. " objetos\n💾 " .. math.floor(saved) .. " KB",
-        Duration = 4,
+        Title = "Fly",
+        Content = "✅ Fly ATIVADO! Use JUMP para subir",
+        Duration = 3,
     })
 end
 
--- ============================================
--- ULTRA DESEMPENHO
--- ============================================
-
-local PerformanceBackup = {
-    Lighting = {}, RemovedObjects = {}, OriginalParent = {},
-    OriginalProperties = {}, TerrainBackup = nil, IsActive = false,
-}
-
-local function ApplyUltraPerformance()
-    if PerformanceBackup.IsActive then return end
-    PerformanceBackup.IsActive = true
-    PerformanceBackup.RemovedObjects = {}
-    PerformanceBackup.OriginalParent = {}
-    PerformanceBackup.OriginalProperties = {}
-    
-    pcall(function()
-        PerformanceBackup.Lighting = {
-            GlobalShadows = Lighting.GlobalShadows, Brightness = Lighting.Brightness,
-            Ambient = Lighting.Ambient, OutdoorAmbient = Lighting.OutdoorAmbient,
-            FogEnd = Lighting.FogEnd, FogStart = Lighting.FogStart,
-            FogColor = Lighting.FogColor, ShadowSoftness = Lighting.ShadowSoftness,
-        }
-        Lighting.GlobalShadows = false
-        Lighting.Brightness = 0
-        Lighting.Ambient = Color3.fromRGB(180, 180, 180)
-        Lighting.OutdoorAmbient = Color3.fromRGB(180, 180, 180)
-        Lighting.FogEnd = 100000
-        Lighting.FogStart = 0
-        Lighting.ShadowSoftness = 0
-    end)
-    
-    pcall(function()
-        for _, c in pairs(Lighting:GetChildren()) do
-            if c:IsA("Atmosphere") or c:IsA("BloomEffect") or c:IsA("BlurEffect") or 
-               c:IsA("ColorCorrectionEffect") or c:IsA("SunRaysEffect") or 
-               c:IsA("DepthOfFieldEffect") or c:IsA("Sky") then
-                PerformanceBackup.OriginalParent[c] = c.Parent
-                c.Parent = nil
-                table.insert(PerformanceBackup.RemovedObjects, c)
-            end
-        end
-    end)
-    
-    pcall(function()
-        for _, o in pairs(workspace:GetDescendants()) do
-            if Settings.UltraPerformance.RemoveTextures then
-                if o:IsA("Decal") or o:IsA("Texture") then
-                    PerformanceBackup.OriginalProperties[o] = o.Transparency
-                    o.Transparency = 1
-                end
-            end
-            if Settings.UltraPerformance.RemoveParticles then
-                if o:IsA("ParticleEmitter") or o:IsA("Trail") or o:IsA("Smoke") or o:IsA("Fire") or o:IsA("Sparkles") then
-                    o.Enabled = false
-                end
-            end
-            if Settings.UltraPerformance.RemoveSounds then
-                if o:IsA("Sound") then o.Volume = 0 end
-            end
-        end
-    end)
-    
-    pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-    end)
+local function StopFly()
+    if FlyBodyVelocity then FlyBodyVelocity:Destroy() FlyBodyVelocity = nil end
+    if FlyBodyGyro then FlyBodyGyro:Destroy() FlyBodyGyro = nil end
+    FlyActive = false
+    if LocalPlayer.Character then
+        local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+        if humanoid then humanoid.PlatformStand = false end
+    end
+    Rayfield:Notify({
+        Title = "Fly",
+        Content = "⏹️ Fly DESATIVADO",
+        Duration = 2,
+    })
 end
 
-local function RemoveUltraPerformance()
-    if not PerformanceBackup.IsActive then return end
-    pcall(function()
-        for p, v in pairs(PerformanceBackup.Lighting) do Lighting[p] = v end
-    end)
-    pcall(function()
-        for _, o in pairs(PerformanceBackup.RemovedObjects) do
-            if o and o.Parent == nil then
-                local op = PerformanceBackup.OriginalParent[o]
-                if op then o.Parent = op end
-            end
+-- ATUALIZAÇÃO DO FLY - CORRIGIDA
+local function UpdateFly()
+    if not FlyActive or not Settings.Fly.Enabled then return end
+    if not FlyBodyVelocity or not LocalPlayer.Character then return end
+    
+    local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not rootPart then return end
+    
+    local speed = Settings.Fly.Speed or 100
+    local velocity = Vector3.new(0, 0, 0)
+    
+    -- SUBIR: Espaço (PC) ou Jump (Mobile) ou botão virtual
+    if SpaceHeld or JumpHeld then
+        velocity = Vector3.new(0, speed, 0)
+    end
+    
+    -- DESCER: Shift (PC) - opcional
+    if UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+        velocity = Vector3.new(0, -speed, 0)
+    end
+    
+    -- MOVIMENTO HORIZONTAL (Mobile - direcional funciona normal)
+    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+    if humanoid then
+        local moveDir = humanoid.MoveDirection
+        if moveDir.Magnitude > 0 then
+            -- Adiciona movimento horizontal
+            local horizontalSpeed = speed * 0.8
+            velocity = velocity + Vector3.new(
+                moveDir.X * horizontalSpeed,
+                0,
+                moveDir.Z * horizontalSpeed
+            )
         end
-    end)
-    pcall(function()
-        for o, v in pairs(PerformanceBackup.OriginalProperties) do
-            if o and o.Parent then o.Transparency = v end
-        end
-    end)
-    pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
-    end)
-    PerformanceBackup.IsActive = false
+    end
+    
+    FlyBodyVelocity.Velocity = velocity
+    
+    -- Manter personagem na vertical
+    if FlyBodyGyro then
+        FlyBodyGyro.CFrame = CFrame.new(rootPart.Position)
+    end
 end
 
 -- ============================================
@@ -585,14 +494,14 @@ end
 local function StartFlyPlayer()
     if not Settings.FlyPlayer.Enabled then return end
     if not LocalPlayer.Character then return end
-    local h = LocalPlayer.Character:FindFirstChild("Humanoid")
-    local rp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not h or not rp then return end
+    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+    local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not rootPart then return end
     
-    FlyPlayerOriginalY = rp.Position.Y
+    FlyPlayerOriginalY = rootPart.Position.Y
     CurrentHeight = FlyPlayerOriginalY + Settings.FlyPlayer.Height
-    h.PlatformStand = true
-    h:ChangeState(Enum.HumanoidStateType.Physics)
+    humanoid.PlatformStand = true
+    humanoid:ChangeState(Enum.HumanoidStateType.Physics)
     
     if FlyPlayerBodyVelocity then FlyPlayerBodyVelocity:Destroy() end
     if FlyPlayerBodyGyro then FlyPlayerBodyGyro:Destroy() end
@@ -601,15 +510,16 @@ local function StartFlyPlayer()
     FlyPlayerBodyVelocity.Velocity = Vector3.new(0, 0, 0)
     FlyPlayerBodyVelocity.MaxForce = Vector3.new(0, 50000, 0)
     FlyPlayerBodyVelocity.P = 5000
-    FlyPlayerBodyVelocity.Parent = rp
+    FlyPlayerBodyVelocity.Parent = rootPart
     
     FlyPlayerBodyGyro = Instance.new("BodyGyro")
     FlyPlayerBodyGyro.MaxTorque = Vector3.new(0, 0, 0)
     FlyPlayerBodyGyro.P = 0
     FlyPlayerBodyGyro.D = 0
-    FlyPlayerBodyGyro.Parent = rp
+    FlyPlayerBodyGyro.Parent = rootPart
     
     FlyPlayerActive = true
+    Rayfield:Notify({Title = "Fly Player", Content = "✅ ATIVADO!", Duration = 2})
 end
 
 local function StopFlyPlayer()
@@ -620,34 +530,35 @@ local function StopFlyPlayer()
         local h = LocalPlayer.Character:FindFirstChild("Humanoid")
         if h then h.PlatformStand = false end
     end
+    Rayfield:Notify({Title = "Fly Player", Content = "⏹️ DESATIVADO", Duration = 2})
 end
 
 local function UpdateFlyPlayer()
     if not FlyPlayerActive or not Settings.FlyPlayer.Enabled then return end
     if not LocalPlayer.Character then return end
-    local h = LocalPlayer.Character:FindFirstChild("Humanoid")
-    local rp = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-    if not h or not rp then return end
-    if h.Health <= 0 then StopFlyPlayer() return end
+    local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
+    local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or not rootPart then return end
+    if humanoid.Health <= 0 then StopFlyPlayer() return end
     
     if Settings.FlyPlayer.AntiFall then
-        local cy = rp.Position.Y
+        local cy = rootPart.Position.Y
         local dy = CurrentHeight - cy
         local vy = math.clamp(dy * 10, -50, 50)
         if FlyPlayerBodyVelocity then
             FlyPlayerBodyVelocity.Velocity = Vector3.new(0, vy, 0)
         end
         if cy < CurrentHeight - 5 then
-            rp.CFrame = CFrame.new(rp.Position.X, CurrentHeight, rp.Position.Z)
+            rootPart.CFrame = CFrame.new(rootPart.Position.X, CurrentHeight, rootPart.Position.Z)
         end
     end
     
-    local md = h.MoveDirection
+    local md = humanoid.MoveDirection
     if md.Magnitude > 0 then
         local ms = Settings.FlyPlayer.MoveSpeed or 50
-        local np = rp.Position + md * ms * 0.05
-        np = Vector3.new(np.X, rp.Position.Y, np.Z)
-        rp.CFrame = CFrame.new(np)
+        local np = rootPart.Position + md * ms * 0.05
+        np = Vector3.new(np.X, rootPart.Position.Y, np.Z)
+        rootPart.CFrame = CFrame.new(np)
     end
 end
 
@@ -665,16 +576,16 @@ local function GetClosestPlayer()
     local closest = nil
     local cd = Settings.Aimbot.MaxDistance or 5000
     
-    for _, p in pairs(Players:GetPlayers()) do
-        if p ~= LocalPlayer then
-            local c = p.Character
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer then
+            local c = player.Character
             if c then
                 local th = c:FindFirstChild("Humanoid")
-                if th and th.Health > 0 and IsEnemy(p) then
+                if th and th.Health > 0 and IsEnemy(player) then
                     local tr = c:FindFirstChild("HumanoidRootPart")
                     if tr then
                         local d = (rp.Position - tr.Position).Magnitude
-                        if d < cd then cd = d closest = p end
+                        if d < cd then cd = d closest = player end
                     end
                 end
             end
@@ -731,22 +642,12 @@ end
 -- ============================================
 
 UserInputService.JumpRequest:Connect(function()
-    if Settings.InfiniteJump.Enabled then
+    if Settings.InfiniteJump.Enabled and not FlyActive then
         local c = LocalPlayer.Character
         if c then
             local h = c:FindFirstChild("Humanoid")
             if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
         end
-    end
-    
-    -- Fly: usar botão JUMP para subir
-    if Settings.Fly.Enabled then
-        if not FlyActive then StartFly() end
-        JumpHeld = true
-        spawn(function()
-            wait(0.15)
-            JumpHeld = false
-        end)
     end
 end)
 
@@ -841,6 +742,117 @@ local function ApplySpeedAndJump()
     else h.WalkSpeed = 16 end
     if Settings.Jump.Enabled then h.JumpPower = Settings.Jump.Value
     else h.JumpPower = 50 end
+end
+
+-- ============================================
+-- ULTRA DESEMPENHO
+-- ============================================
+
+local function ApplyUltraPerformance()
+    if PerformanceBackup.IsActive then return end
+    PerformanceBackup.IsActive = true
+    PerformanceBackup.RemovedObjects = {}
+    PerformanceBackup.OriginalParent = {}
+    PerformanceBackup.OriginalProperties = {}
+    
+    pcall(function()
+        PerformanceBackup.Lighting = {
+            GlobalShadows = Lighting.GlobalShadows,
+            Brightness = Lighting.Brightness,
+            Ambient = Lighting.Ambient,
+            OutdoorAmbient = Lighting.OutdoorAmbient,
+            FogEnd = Lighting.FogEnd, FogStart = Lighting.FogStart,
+            FogColor = Lighting.FogColor, ShadowSoftness = Lighting.ShadowSoftness,
+        }
+        Lighting.GlobalShadows = false
+        Lighting.Brightness = 0
+        Lighting.Ambient = Color3.fromRGB(180, 180, 180)
+        Lighting.OutdoorAmbient = Color3.fromRGB(180, 180, 180)
+        Lighting.FogEnd = 100000
+        Lighting.FogStart = 0
+        Lighting.ShadowSoftness = 0
+    end)
+    
+    pcall(function()
+        for _, child in pairs(Lighting:GetChildren()) do
+            if child:IsA("Atmosphere") or child:IsA("BloomEffect") or 
+               child:IsA("BlurEffect") or child:IsA("ColorCorrectionEffect") or 
+               child:IsA("SunRaysEffect") or child:IsA("DepthOfFieldEffect") or 
+               child:IsA("Sky") then
+                PerformanceBackup.OriginalParent[child] = child.Parent
+                child.Parent = nil
+                table.insert(PerformanceBackup.RemovedObjects, child)
+            end
+        end
+    end)
+    
+    pcall(function()
+        for _, obj in pairs(workspace:GetDescendants()) do
+            if Settings.UltraPerformance.RemoveTextures then
+                if obj:IsA("Decal") or obj:IsA("Texture") then
+                    PerformanceBackup.OriginalProperties[obj] = obj.Transparency
+                    obj.Transparency = 1
+                end
+            end
+            if Settings.UltraPerformance.RemoveParticles then
+                if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or 
+                   obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
+                    obj.Enabled = false
+                end
+            end
+            if Settings.UltraPerformance.RemoveSounds then
+                if obj:IsA("Sound") then obj.Volume = 0 end
+            end
+        end
+    end)
+    
+    pcall(function()
+        if Settings.UltraPerformance.RemoveTerrain then
+            local terrain = workspace:FindFirstChildOfClass("Terrain")
+            if terrain then
+                terrain.WaterWaveSize = 0
+                terrain.WaterWaveSpeed = 0
+                terrain.WaterReflectance = 0
+                terrain.WaterTransparency = 1
+                terrain.Decoration = false
+            end
+        end
+    end)
+    
+    pcall(function()
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    end)
+    
+    print("✅ Ultra Desempenho ATIVADO!")
+end
+
+local function RemoveUltraPerformance()
+    if not PerformanceBackup.IsActive then return end
+    pcall(function()
+        for prop, value in pairs(PerformanceBackup.Lighting) do
+            Lighting[prop] = value
+        end
+    end)
+    pcall(function()
+        for _, obj in pairs(PerformanceBackup.RemovedObjects) do
+            if obj and obj.Parent == nil then
+                local op = PerformanceBackup.OriginalParent[obj]
+                if op then obj.Parent = op end
+            end
+        end
+    end)
+    pcall(function()
+        for obj, value in pairs(PerformanceBackup.OriginalProperties) do
+            if obj and obj.Parent then obj.Transparency = value end
+        end
+    end)
+    pcall(function()
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+    end)
+    PerformanceBackup.IsActive = false
+    PerformanceBackup.RemovedObjects = {}
+    PerformanceBackup.OriginalParent = {}
+    PerformanceBackup.OriginalProperties = {}
 end
 
 -- ============================================
@@ -1176,27 +1188,84 @@ LocalPlayer.CharacterAdded:Connect(function()
 end)
 
 -- ============================================
--- INPUTS (PC)
+-- INPUTS (PC + MOBILE) - CORRIGIDO
 -- ============================================
 
+-- PC: Espaço para subir
 UserInputService.InputBegan:Connect(function(input, gp)
     if gp then return end
+    
+    -- PC: ESPAÇO para subir
     if input.KeyCode == Enum.KeyCode.Space then
         SpaceHeld = true
-        if Settings.Fly.Enabled and not FlyActive then StartFly() end
+        if Settings.Fly.Enabled and not FlyActive then
+            StartFly()
+        end
     end
-    if input.KeyCode == Enum.KeyCode.Q then
-        FlyDownHeld = true
+    
+    -- PC: SHIFT para descer
+    if input.KeyCode == Enum.KeyCode.LeftShift then
+        FlyUpPressed = true
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input, gp)
     if gp then return end
+    
     if input.KeyCode == Enum.KeyCode.Space then
         SpaceHeld = false
     end
-    if input.KeyCode == Enum.KeyCode.Q then
-        FlyDownHeld = false
+    
+    if input.KeyCode == Enum.KeyCode.LeftShift then
+        FlyUpPressed = false
+    end
+end)
+
+-- MOBILE: BOTÃO JUMP para subir - CORRIGIDO
+UserInputService.JumpRequest:Connect(function()
+    -- Se Fly está ativo, sobe
+    if Settings.Fly.Enabled then
+        if not FlyActive then
+            StartFly()
+        end
+        
+        JumpHeld = true
+        -- Manter ativo por 0.5 segundos (para segurar)
+        spawn(function()
+            wait(0.5)
+            JumpHeld = false
+        end)
+    end
+    
+    -- Infinite Jump
+    if Settings.InfiniteJump.Enabled and not Settings.Fly.Enabled then
+        local c = LocalPlayer.Character
+        if c then
+            local h = c:FindFirstChild("Humanoid")
+            if h then h:ChangeState(Enum.HumanoidStateType.Jumping) end
+        end
+    end
+end)
+
+-- Mobile: Botão de toque para Fly (área de toque superior)
+UserInputService.TouchStarted:Connect(function(touch, gp)
+    if gp then return end
+    if not Settings.Fly.Enabled then return end
+    
+    -- Área superior da tela = subir
+    local screenSize = Camera.ViewportSize
+    if touch.Position.Y < screenSize.Y * 0.3 then
+        JumpHeld = true
+    end
+end)
+
+UserInputService.TouchEnded:Connect(function(touch, gp)
+    if gp then return end
+    if not Settings.Fly.Enabled then return end
+    
+    local screenSize = Camera.ViewportSize
+    if touch.Position.Y < screenSize.Y * 0.3 then
+        JumpHeld = false
     end
 end)
 
@@ -1204,24 +1273,49 @@ end)
 -- LOOPS
 -- ============================================
 
-spawn(function() while wait(0.03) do UpdateFly() end end)
-spawn(function() while wait(0.03) do
-    if Settings.FlyPlayer.Enabled and FlyPlayerActive then UpdateFlyPlayer() end
-end end)
-spawn(function() while true do
-    wait(0.1)
-    if LocalPlayer.Character then ApplySpeedAndJump() end
-end end)
-spawn(function() while wait(0.15) do
-    if Settings.ESP.Enabled then UpdateESP() end
-end end)
-spawn(function() while wait(2) do
-    if Settings.ESP.Enabled then MonitorNewPlayers() end
-end end)
-spawn(function() while wait(5) do
-    PlayerTeam = nil
-    GetLocalTeam()
-end end)
+spawn(function() 
+    while wait(0.03) do 
+        UpdateFly() 
+    end 
+end)
+
+spawn(function() 
+    while wait(0.03) do
+        if Settings.FlyPlayer.Enabled and FlyPlayerActive then 
+            UpdateFlyPlayer() 
+        end
+    end 
+end)
+
+spawn(function() 
+    while true do
+        wait(0.1)
+        if LocalPlayer.Character then ApplySpeedAndJump() end
+    end 
+end)
+
+spawn(function() 
+    while wait(0.15) do
+        if Settings.ESP.Enabled then UpdateESP() end
+    end 
+end)
+
+spawn(function() 
+    while wait(2) do
+        if Settings.ESP.Enabled then MonitorNewPlayers() end
+    end 
+end)
+
+spawn(function() 
+    while wait(5) do
+        PlayerTeam = nil
+        GetLocalTeam()
+    end 
+end)
+
+-- ============================================
+-- LOOP PRINCIPAL
+-- ============================================
 
 local function OnRenderStep()
     if not LocalPlayer.Character then return end
@@ -1248,73 +1342,168 @@ local function CreateUI()
         ConfigurationSaving = { Enabled = false },
     })
 
-    -- PERFORMANCE
+    -- ============================================
+    -- ABA: PERFORMANCE
+    -- ============================================
+    
     local PerformanceTab = Window:CreateTab("⚡ Performance", 4483362458)
     
     PerformanceTab:CreateSection("🧹 Auto Remove Cache (2s)")
-    PerformanceTab:CreateToggle({Name = "Auto Remove Cache/Memory", CurrentValue = false, Callback = function(v)
-        Settings.AutoRemoveCache.Enabled = v
-        if v then
-            Settings.AutoRemoveCache.LastClear = 0
-            StartAutoRemoveCache()
+    
+    PerformanceTab:CreateToggle({
+        Name = "Auto Remove Cache/Memory",
+        CurrentValue = false,
+        Callback = function(v)
+            Settings.AutoRemoveCache.Enabled = v
+            if v then
+                Settings.AutoRemoveCache.LastClear = 0
+                StartAutoRemoveCache()
+                Rayfield:Notify({
+                    Title = "Auto Remove Cache",
+                    Content = "🧹 ATIVADO! Limpando a cada " .. Settings.AutoRemoveCache.Interval .. "s",
+                    Duration = 3,
+                })
+            else
+                Rayfield:Notify({
+                    Title = "Auto Remove Cache",
+                    Content = "⏹️ DESATIVADO",
+                    Duration = 2,
+                })
+            end
         end
-    end})
-    PerformanceTab:CreateSlider({Name = "Intervalo de Limpeza", Range = {1, 30}, Increment = 1, Suffix = "s", CurrentValue = 2, Callback = function(v) Settings.AutoRemoveCache.Interval = v end})
+    })
+    
+    PerformanceTab:CreateSlider({
+        Name = "Intervalo de Limpeza",
+        Range = {1, 30},
+        Increment = 1,
+        Suffix = "s",
+        CurrentValue = 2,
+        Callback = function(v)
+            Settings.AutoRemoveCache.Interval = v
+        end
+    })
+    
     PerformanceTab:CreateToggle({Name = "Limpar Texturas", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.ClearTextures = v end})
     PerformanceTab:CreateToggle({Name = "Limpar Sons", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.ClearSounds = v end})
-    PerformanceTab:CreateToggle({Name = "Limpar Meshes", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.ClearMeshes = v end})
+    PerformanceTab:CreateToggle({Name = "Limpar Meshes Distantes", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.ClearMeshes = v end})
     PerformanceTab:CreateToggle({Name = "Limpar Animações", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.ClearAnimations = v end})
     PerformanceTab:CreateToggle({Name = "Limpar Partículas", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.ClearParticles = v end})
-    PerformanceTab:CreateToggle({Name = "Garbage Collection", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.GarbageCollect = v end})
-    PerformanceTab:CreateButton({Name = "🧹 Limpar Cache AGORA", Callback = function() ManualClearCache() end})
+    PerformanceTab:CreateToggle({Name = "Forçar Garbage Collection", CurrentValue = true, Callback = function(v) Settings.AutoRemoveCache.GarbageCollect = v end})
+    
+    PerformanceTab:CreateButton({
+        Name = "🧹 Limpar Cache AGORA",
+        Callback = function() ManualClearCache() end
+    })
     
     PerformanceTab:CreateSection("📊 Estatísticas Cache")
-    local sl = PerformanceTab:CreateLabel("📦 Objetos: 0")
-    local ml = PerformanceTab:CreateLabel("💾 Liberado: 0 KB")
-    local cl = PerformanceTab:CreateLabel("🧹 Limpezas: 0")
+    
+    local statsLabel = PerformanceTab:CreateLabel("📦 Objetos: 0")
+    local memLabel = PerformanceTab:CreateLabel("💾 Liberado: 0 KB")
+    local clearLabel = PerformanceTab:CreateLabel("🧹 Limpezas: 0")
+    
     spawn(function()
         while wait(2) do
-            if sl then sl:Set("📦 Objetos: " .. Settings.AutoRemoveCache.TotalClears * 5) end
-            if ml then ml:Set("💾 Liberado: " .. math.floor(Settings.AutoRemoveCache.MemorySaved) .. " KB") end
-            if cl then cl:Set("🧹 Limpezas: " .. Settings.AutoRemoveCache.TotalClears) end
+            if statsLabel then statsLabel:Set("📦 Objetos: " .. CacheStats.TotalCleared) end
+            if memLabel then memLabel:Set("💾 Liberado: " .. math.floor(Settings.AutoRemoveCache.MemorySaved) .. " KB") end
+            if clearLabel then clearLabel:Set("🧹 Limpezas: " .. Settings.AutoRemoveCache.TotalClears) end
         end
     end)
     
     PerformanceTab:CreateSection("🌐 Otimizador de Internet")
-    PerformanceTab:CreateToggle({Name = "Otimizar Internet/Ping", CurrentValue = false, Callback = function(v)
-        Settings.NetworkOptimizer.Enabled = v
-        if v then StartNetworkOptimizer() end
-    end})
-    PerformanceTab:CreateSlider({Name = "Intervalo", Range = {1, 10}, Increment = 1, Suffix = "s", CurrentValue = 2, Callback = function(v) Settings.NetworkOptimizer.Interval = v end})
     
-    PerformanceTab:CreateSection("📊 Estatísticas Ping")
-    local pl = PerformanceTab:CreateLabel("📡 Ping: 0ms")
-    local al = PerformanceTab:CreateLabel("📊 Média: 0ms")
-    local ol = PerformanceTab:CreateLabel("🚀 Otimizações: 0")
+    PerformanceTab:CreateToggle({
+        Name = "🌐 Otimizar Internet/Ping",
+        CurrentValue = false,
+        Callback = function(v)
+            Settings.NetworkOptimizer.Enabled = v
+            if v then
+                Settings.NetworkOptimizer.LastOptimize = 0
+                StartNetworkOptimizer()
+                Rayfield:Notify({
+                    Title = "🌐 Otimizador",
+                    Content = "🚀 ATIVADO!",
+                    Duration = 3,
+                })
+            else
+                Rayfield:Notify({
+                    Title = "🌐 Otimizador",
+                    Content = "⏹️ DESATIVADO",
+                    Duration = 2,
+                })
+            end
+        end
+    })
+    
+    PerformanceTab:CreateSlider({
+        Name = "Intervalo de Otimização",
+        Range = {1, 10},
+        Increment = 1,
+        Suffix = "s",
+        CurrentValue = 2,
+        Callback = function(v) Settings.NetworkOptimizer.Interval = v end
+    })
+    
+    PerformanceTab:CreateToggle({Name = "Otimizar Ping", CurrentValue = true, Callback = function(v) Settings.NetworkOptimizer.OptimizePing = v end})
+    PerformanceTab:CreateToggle({Name = "Reduzir Latência", CurrentValue = true, Callback = function(v) Settings.NetworkOptimizer.ReduceLatency = v end})
+    PerformanceTab:CreateToggle({Name = "Limpar Cache de Rede", CurrentValue = true, Callback = function(v) Settings.NetworkOptimizer.ClearNetworkCache = v end})
+    PerformanceTab:CreateToggle({Name = "Alertar Ping Alto", CurrentValue = false, Callback = function(v) Settings.NetworkOptimizer.AutoReconnect = v end})
+    
+    PerformanceTab:CreateSection("📊 Estatísticas de Ping")
+    
+    local pingLabel = PerformanceTab:CreateLabel("📡 Ping: 0ms")
+    local avgLabel = PerformanceTab:CreateLabel("📊 Média: 0ms")
+    local minMaxLabel = PerformanceTab:CreateLabel("⬇️ Min: 0ms | ⬆️ Max: 0ms")
+    local optLabel = PerformanceTab:CreateLabel("🚀 Otimizações: 0")
+    
     spawn(function()
         while wait(1) do
-            local cp = GetPing()
-            if pl then pl:Set("📡 Ping: " .. cp .. "ms") end
-            if al then al:Set("📊 Média: " .. Settings.NetworkOptimizer.AvgPing .. "ms") end
-            if ol then ol:Set("🚀 Otimizações: " .. Settings.NetworkOptimizer.TotalOptimizations) end
+            local currentPing = GetPing()
+            if pingLabel then pingLabel:Set("📡 Ping: " .. currentPing .. "ms") end
+            if avgLabel then avgLabel:Set("📊 Média: " .. Settings.NetworkOptimizer.AvgPing .. "ms") end
+            if minMaxLabel then minMaxLabel:Set("⬇️ Min: " .. Settings.NetworkOptimizer.MinPing .. "ms | ⬆️ Max: " .. Settings.NetworkOptimizer.MaxPing .. "ms") end
+            if optLabel then optLabel:Set("🚀 Otimizações: " .. Settings.NetworkOptimizer.TotalOptimizations) end
         end
     end)
     
     PerformanceTab:CreateSection("🚀 Ultra Desempenho")
-    PerformanceTab:CreateToggle({Name = "⚡ Ativar Ultra Desempenho", CurrentValue = false, Callback = function(v)
-        Settings.UltraPerformance.Enabled = v
-        if v then ApplyUltraPerformance() else RemoveUltraPerformance() end
-    end})
+    
+    PerformanceTab:CreateToggle({
+        Name = "⚡ Ativar Ultra Desempenho",
+        CurrentValue = false,
+        Callback = function(v)
+            Settings.UltraPerformance.Enabled = v
+            if v then
+                ApplyUltraPerformance()
+                Rayfield:Notify({Title = "Ultra Desempenho", Content = "🚀 ATIVADO!", Duration = 3})
+            else
+                RemoveUltraPerformance()
+                Rayfield:Notify({Title = "Ultra Desempenho", Content = "⏹️ DESATIVADO", Duration = 3})
+            end
+        end
+    })
+    
+    PerformanceTab:CreateToggle({Name = "Remover Texturas", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveTextures = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Sombras", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveShadows = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Partículas", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveParticles = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Efeitos", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveEffects = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Sky", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveSky = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Água", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveTerrain = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Sons", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveSounds = v end})
 
-    -- PLAYER
+    -- ============================================
+    -- ABA: PLAYER
+    -- ============================================
+    
     local PlayerTab = Window:CreateTab("🎯 Player", 4483362458)
     
     PlayerTab:CreateSection("Aimlock")
     PlayerTab:CreateToggle({Name = "Aimlock", CurrentValue = false, Callback = function(v) Settings.Aimbot.Enabled = v if not v then CurrentTarget = nil end end})
-    PlayerTab:CreateToggle({Name = "Travar no Alvo", CurrentValue = true, Callback = function(v) Settings.Aimbot.LockMode = v end})
+    PlayerTab:CreateToggle({Name = "Travar no Alvo (Lock)", CurrentValue = true, Callback = function(v) Settings.Aimbot.LockMode = v end})
     PlayerTab:CreateToggle({Name = "Filtro de Time", CurrentValue = false, Callback = function(v) Settings.Aimbot.TeamFilter = v end})
     PlayerTab:CreateDropdown({Name = "Parte do Corpo", Options = {"Head", "HumanoidRootPart", "UpperTorso"}, CurrentOption = "Head", Callback = function(o) Settings.Aimbot.AimPart = o end})
     PlayerTab:CreateSlider({Name = "Distância", Range = {500, 10000}, Increment = 500, Suffix = "studs", CurrentValue = 5000, Callback = function(v) Settings.Aimbot.MaxDistance = v end})
+    PlayerTab:CreateSlider({Name = "Suavidade", Range = {0, 100}, Increment = 5, Suffix = "%", CurrentValue = 15, Callback = function(v) Settings.Aimbot.Smoothness = v / 100 end})
     
     PlayerTab:CreateSection("ESP")
     PlayerTab:CreateToggle({Name = "ESP Box 2D", CurrentValue = false, Callback = function(v)
@@ -1327,6 +1516,10 @@ local function CreateUI()
             ESPConnections = {}
         end
     end})
+    PlayerTab:CreateSlider({Name = "Distância ESP", Range = {1000, 100000}, Increment = 1000, Suffix = "studs", CurrentValue = 100000, Callback = function(v)
+        Settings.ESP.MaxDistance = v
+        for _, d in pairs(ESPObjects) do if d.ESP then d.ESP.MaxDistance = v end end
+    end})
     
     PlayerTab:CreateSection("Noclip")
     PlayerTab:CreateToggle({Name = "Noclip", CurrentValue = false, Callback = function(v) Settings.Noclip.Enabled = v SetupNoclip() end})
@@ -1338,7 +1531,10 @@ local function CreateUI()
     PlayerTab:CreateSection("Visual")
     PlayerTab:CreateToggle({Name = "No Fog", CurrentValue = false, Callback = function(v) Settings.NoFog.Enabled = v ToggleNoFog() end})
 
-    -- MOVIMENTO
+    -- ============================================
+    -- ABA: MOVIMENTO
+    -- ============================================
+    
     local MoveTab = Window:CreateTab("🏃 Movimento", 4483362458)
     
     MoveTab:CreateSection("Speed")
@@ -1350,63 +1546,51 @@ local function CreateUI()
     MoveTab:CreateSlider({Name = "Altura", Range = {50, 300}, Increment = 10, Suffix = "JumpPower", CurrentValue = 150, Callback = function(v) Settings.Jump.Value = v ApplySpeedAndJump() end})
     MoveTab:CreateToggle({Name = "Infinite Jump", CurrentValue = false, Callback = function(v) Settings.InfiniteJump.Enabled = v end})
     
-    -- ===== FLY LIVRE (NOVO) =====
-    MoveTab:CreateSection("✈️ Fly Livre (Mobile)")
+    -- ============================================
+    -- FLY CORRIGIDO
+    -- ============================================
+    
+    MoveTab:CreateSection("🚀 Fly (CORRIGIDO)")
     
     MoveTab:CreateToggle({
-        Name = "Fly Livre",
+        Name = "Fly - Voar para Cima",
         CurrentValue = false,
         Callback = function(v)
             Settings.Fly.Enabled = v
-            if v then StartFly() else StopFly() end
+            if v then
+                StartFly()
+            else
+                if FlyActive then StopFly() end
+            end
         end
     })
     
     MoveTab:CreateSlider({
-        Name = "Velocidade Horizontal",
-        Range = {30, 300},
+        Name = "Velocidade do Fly",
+        Range = {50, 300},
         Increment = 10,
         Suffix = "studs/s",
         CurrentValue = 100,
         Callback = function(v) Settings.Fly.Speed = v end
     })
     
-    MoveTab:CreateSlider({
-        Name = "Velocidade de Subida",
-        Range = {30, 200},
-        Increment = 10,
-        Suffix = "studs/s",
-        CurrentValue = 80,
-        Callback = function(v) Settings.Fly.UpSpeed = v end
-    })
+    MoveTab:CreateLabel("📱 MOBILE: Segure o BOTÃO JUMP para subir")
+    MoveTab:CreateLabel("📱 MOBILE: Toque na parte SUPERIOR da tela")
+    MoveTab:CreateLabel("💻 PC: Segure ESPAÇO")
+    MoveTab:CreateLabel("💻 PC: SHIFT para descer")
     
-    MoveTab:CreateSlider({
-        Name = "Velocidade de Descida",
-        Range = {30, 200},
-        Increment = 10,
-        Suffix = "studs/s",
-        CurrentValue = 80,
-        Callback = function(v) Settings.Fly.DownSpeed = v end
-    })
+    -- ============================================
+    -- FLY PLAYER (HOVER)
+    -- ============================================
     
-    MoveTab:CreateLabel("📱 MOBILE - Como usar:")
-    MoveTab:CreateLabel("• Direcional ← ↑ → para voar")
-    MoveTab:CreateLabel("• Botão JUMP para SUBIR")
-    MoveTab:CreateLabel("• Olhe para baixo + JUMP para DESCER")
-    MoveTab:CreateLabel("")
-    MoveTab:CreateLabel("💻 PC - Como usar:")
-    MoveTab:CreateLabel("• WASD para voar")
-    MoveTab:CreateLabel("• ESPAÇO para SUBIR")
-    MoveTab:CreateLabel("• Q para DESCER")
+    MoveTab:CreateSection("✈️ Fly Player (Hover)")
     
-    -- FLY PLAYER HOVER
-    MoveTab:CreateSection("🛸 Fly Player (Hover)")
     MoveTab:CreateToggle({Name = "Fly Player (Hover)", CurrentValue = false, Callback = function(v)
         Settings.FlyPlayer.Enabled = v
         if v then StartFlyPlayer() else StopFlyPlayer() end
     end})
     MoveTab:CreateToggle({Name = "Anti-Reset Fly", CurrentValue = true, Callback = function(v) Settings.FlyPlayer.AntiReset = v end})
-    MoveTab:CreateToggle({Name = "Anti-Fall", CurrentValue = true, Callback = function(v) Settings.FlyPlayer.AntiFall = v end})
+    MoveTab:CreateToggle({Name = "Anti-Fall (Não Cai)", CurrentValue = true, Callback = function(v) Settings.FlyPlayer.AntiFall = v end})
     MoveTab:CreateSlider({Name = "Altura no Ar", Range = {5, 100}, Increment = 5, Suffix = "studs", CurrentValue = 10, Callback = function(v)
         Settings.FlyPlayer.Height = v
         if FlyPlayerActive and LocalPlayer.Character then
@@ -1416,10 +1600,14 @@ local function CreateUI()
     end})
     MoveTab:CreateSlider({Name = "Velocidade de Movimento", Range = {10, 150}, Increment = 5, Suffix = "studs/s", CurrentValue = 50, Callback = function(v) Settings.FlyPlayer.MoveSpeed = v end})
 
-    -- SCRIPTS
+    -- ============================================
+    -- ABA: SCRIPTS
+    -- ============================================
+    
     local ScriptsTab = Window:CreateTab("📜 Scripts", 4483362458)
     
     ScriptsTab:CreateSection("🎯 CentHub Bounty")
+    
     ScriptsTab:CreateButton({
         Name = "⚔️ Carregar CentHub Bounty",
         Callback = function()
@@ -1442,28 +1630,37 @@ local function CreateUI()
         end
     })
 
-    -- SOBRE
+    -- ============================================
+    -- ABA: SOBRE
+    -- ============================================
+    
     local AboutTab = Window:CreateTab("ℹ️ Sobre", 4483362458)
     AboutTab:CreateLabel("⚡ ComandoGame Mobile v23.0")
     AboutTab:CreateLabel("👤 Criador: Mk_gaming")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("🆕 FLY LIVRE CORRIGIDO!")
-    AboutTab:CreateLabel("• Controle total no mobile")
-    AboutTab:CreateLabel("• Voa para QUALQUER direção")
-    AboutTab:CreateLabel("• Sobe, desce, esquerda, direita")
-    AboutTab:CreateLabel("• Subida: JUMP")
-    AboutTab:CreateLabel("• Descida: Olhe para baixo + JUMP")
+    AboutTab:CreateLabel("🆕 NOVIDADES:")
+    AboutTab:CreateLabel("✅ FLY CORRIGIDO!")
+    AboutTab:CreateLabel("• Mobile: Botão Jump sobe")
+    AboutTab:CreateLabel("• Mobile: Toca no topo da tela")
+    AboutTab:CreateLabel("• PC: Segure ESPAÇO")
+    AboutTab:CreateLabel("• PC: SHIFT desce")
+    AboutTab:CreateLabel("")
+    AboutTab:CreateLabel("🧹 Auto Remove Cache (2s)")
+    AboutTab:CreateLabel("🌐 Otimizador de Internet")
+    AboutTab:CreateLabel("🚀 Ultra Desempenho")
+    AboutTab:CreateLabel("✈️ Fly Player (Hover)")
 end
 
 CreateUI()
 
 Rayfield:Notify({
     Title = "ComandoGame Mobile",
-    Content = "⚡ v23.0 - Fly Livre CORRIGIDO!",
+    Content = "⚡ v23.0 - FLY CORRIGIDO!",
     Duration = 4,
 })
 
 print("✅ ComandoGame Mobile v23.0 carregado!")
-print("✈️ Fly Livre com controle total!")
-print("📱 Mobile: direcional + JUMP")
-print("💻 PC: WASD + ESPAÇO + Q")
+print("🚀 FLY CORRIGIDO!")
+print("📱 Mobile: Segure BOTÃO JUMP para subir")
+print("📱 Mobile: Toque no TOPO da tela para subir")
+print("💻 PC: Segure ESPAÇO")
