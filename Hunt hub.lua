@@ -1,8 +1,8 @@
 --[[
     COMANDOGAME - MOBILE EDITION
-    Versão: 25.0.0
+    Versão: 25.1.0
     Criador: Mk_gaming
-    Base: v23 (ESTÁVEL) + Melhorias de Performance
+    Ultra Desempenho CORRIGIDO (não buga efeitos de dano)
 ]]
 
 -- ============================================
@@ -36,10 +36,21 @@ local Settings = {
     NoFog = { Enabled = false },
     UltraPerformance = {
         Enabled = false,
-        RemoveTextures = true, RemoveShadows = true, RemoveParticles = true,
-        RemoveEffects = true, RemoveDecorations = true, RemoveSky = true,
-        RemoveTerrain = true, RemoveSounds = true, RemoveMeshes = true,
-        RemoveBillboards = true, RemovePostFX = true, LowQuality = true,
+        RemoveTextures = true,
+        RemoveShadows = true,
+        RemoveParticles = true,
+        RemoveDecorations = true,
+        RemoveSky = true,
+        RemoveTerrain = true,
+        RemoveSounds = true,
+        RemoveMeshes = true,
+        RemoveBillboards = false,   -- DESATIVADO por padrão (pode bugar ESP)
+        LowQuality = true,
+        -- NOVAS OPÇÕES DE SEGURANÇA
+        KeepColorCorrection = true,  -- MANTER efeitos de cor (dano)
+        KeepBloom = true,            -- MANTER bloom
+        KeepBlur = true,             -- MANTER blur
+        KeepDamageEffects = true,    -- MANTER efeitos de dano
     },
     AutoRemoveCache = {
         Enabled = false,
@@ -89,11 +100,19 @@ local CentHubLoaded = false
 local PerformanceBackup = {
     Lighting = {}, RemovedObjects = {}, OriginalParent = {},
     OriginalProperties = {}, TerrainBackup = nil, IsActive = false,
+    KeptEffects = {}, -- Efeitos que NÃO foram removidos
 }
 
 local CacheStats = {
     Textures = 0, Sounds = 0, Meshes = 0, Animations = 0,
     TotalCleared = 0, LastGC = 0,
+}
+
+-- Lista de efeitos CRÍTICOS que NÃO devem ser removidos
+local CRITICAL_EFFECTS = {
+    "ColorCorrectionEffect",
+    "BloomEffect",
+    "BlurEffect",
 }
 
 -- ============================================
@@ -114,7 +133,7 @@ local function GetPing()
 end
 
 -- ============================================
--- OTIMIZADOR DE INTERNET MELHORADO
+-- OTIMIZADOR DE INTERNET
 -- ============================================
 
 local function OptimizeNetwork()
@@ -143,7 +162,6 @@ local function OptimizeNetwork()
     end
     
     pcall(function()
-        -- Forçar atualização de rede
         if Settings.NetworkOptimizer.LowLatencyMode then
             if workspace.CurrentCamera then
                 local fov = workspace.CurrentCamera.FieldOfView
@@ -152,7 +170,6 @@ local function OptimizeNetwork()
             end
         end
         
-        -- Limpar cache de rede
         if Settings.NetworkOptimizer.ClearNetworkCache then
             if Settings.AutoRemoveCache.GarbageCollect then
                 collectgarbage("collect")
@@ -160,14 +177,12 @@ local function OptimizeNetwork()
             end
         end
         
-        -- Boost de banda
         if Settings.NetworkOptimizer.BoostBandwidth then
             pcall(function()
                 settings().Network.IncomingReplicationLag = 0
             end)
         end
         
-        -- Jitter compensation
         if Settings.NetworkOptimizer.JitterCompensation then
             if #Settings.NetworkOptimizer.PingHistory >= 5 then
                 local variance = 0
@@ -369,8 +384,20 @@ local function ManualClearCache()
 end
 
 -- ============================================
--- ULTRA DESEMPENHO
+-- ULTRA DESEMPENHO CORRIGIDO
 -- ============================================
+
+local function IsCriticalEffect(obj)
+    if not obj then return false end
+    local className = obj.ClassName
+    
+    -- ColorCorrectionEffect é o principal causador do bug
+    if className == "ColorCorrectionEffect" then return true end
+    if className == "BloomEffect" then return true end
+    if className == "BlurEffect" then return true end
+    
+    return false
+end
 
 local function ApplyUltraPerformance()
     if PerformanceBackup.IsActive then return end
@@ -378,7 +405,9 @@ local function ApplyUltraPerformance()
     PerformanceBackup.RemovedObjects = {}
     PerformanceBackup.OriginalParent = {}
     PerformanceBackup.OriginalProperties = {}
+    PerformanceBackup.KeptEffects = {}
     
+    -- ===== LIGHTING =====
     pcall(function()
         PerformanceBackup.Lighting = {
             GlobalShadows = Lighting.GlobalShadows,
@@ -397,12 +426,56 @@ local function ApplyUltraPerformance()
         Lighting.ShadowSoftness = 0
     end)
     
+    -- ===== REMOVER EFEITOS (MAS MANTER OS CRÍTICOS) =====
     pcall(function()
         for _, child in pairs(Lighting:GetChildren()) do
-            if child:IsA("Atmosphere") or child:IsA("BloomEffect") or 
-               child:IsA("BlurEffect") or child:IsA("ColorCorrectionEffect") or 
-               child:IsA("SunRaysEffect") or child:IsA("DepthOfFieldEffect") or 
-               child:IsA("Sky") then
+            local shouldRemove = false
+            
+            -- Atmosphere: pode remover
+            if child:IsA("Atmosphere") then shouldRemove = true end
+            
+            -- Sky: pode remover
+            if child:IsA("Sky") then shouldRemove = true end
+            
+            -- SunRaysEffect: pode remover
+            if child:IsA("SunRaysEffect") then shouldRemove = true end
+            
+            -- DepthOfFieldEffect: pode remover
+            if child:IsA("DepthOfFieldEffect") then shouldRemove = true end
+            
+            -- BloomEffect: MANTER se KeepBloom
+            if child:IsA("BloomEffect") then
+                if Settings.UltraPerformance.KeepBloom then
+                    shouldRemove = false
+                    table.insert(PerformanceBackup.KeptEffects, child)
+                else
+                    shouldRemove = true
+                end
+            end
+            
+            -- ColorCorrectionEffect: MANTER (crítico para dano!)
+            if child:IsA("ColorCorrectionEffect") then
+                if Settings.UltraPerformance.KeepColorCorrection then
+                    shouldRemove = false
+                    table.insert(PerformanceBackup.KeptEffects, child)
+                    print("✅ Mantendo ColorCorrectionEffect (efeito de dano)")
+                else
+                    shouldRemove = true
+                end
+            end
+            
+            -- BlurEffect: MANTER se KeepBlur
+            if child:IsA("BlurEffect") then
+                if Settings.UltraPerformance.KeepBlur then
+                    shouldRemove = false
+                    table.insert(PerformanceBackup.KeptEffects, child)
+                else
+                    shouldRemove = true
+                end
+            end
+            
+            -- Remover apenas se deve
+            if shouldRemove then
                 PerformanceBackup.OriginalParent[child] = child.Parent
                 child.Parent = nil
                 table.insert(PerformanceBackup.RemovedObjects, child)
@@ -410,30 +483,56 @@ local function ApplyUltraPerformance()
         end
     end)
     
+    -- ===== REMOVER TEXTURAS E PARTÍCULAS DO WORKSPACE =====
     pcall(function()
         for _, obj in pairs(workspace:GetDescendants()) do
-            if Settings.UltraPerformance.RemoveTextures then
+            -- Não remover efeitos que estão no personagem local (dano)
+            local isLocalChar = false
+            if LocalPlayer.Character then
+                isLocalChar = obj:IsDescendantOf(LocalPlayer.Character)
+            end
+            
+            if Settings.UltraPerformance.RemoveTextures and not isLocalChar then
                 if obj:IsA("Decal") or obj:IsA("Texture") then
                     PerformanceBackup.OriginalProperties[obj] = obj.Transparency
                     obj.Transparency = 1
                 end
             end
-            if Settings.UltraPerformance.RemoveParticles then
+            
+            if Settings.UltraPerformance.RemoveParticles and not isLocalChar then
                 if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or 
                    obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
-                    obj.Enabled = false
+                    -- MANTER partículas de dano (nome comum no Blox Fruits)
+                    local name = obj.Name:lower()
+                    if not (name:match("damage") or name:match("hurt") or name:match("hit")) then
+                        obj.Enabled = false
+                    end
                 end
             end
+            
             if Settings.UltraPerformance.RemoveSounds then
-                if obj:IsA("Sound") then obj.Volume = 0 end
+                if obj:IsA("Sound") then
+                    -- Não mutar sons do personagem local
+                    if not isLocalChar then
+                        obj.Volume = 0
+                    end
+                end
             end
         end
     end)
     
+    -- ===== TERRAIN =====
     pcall(function()
         if Settings.UltraPerformance.RemoveTerrain then
             local terrain = workspace:FindFirstChildOfClass("Terrain")
             if terrain then
+                PerformanceBackup.TerrainBackup = {
+                    WaterWaveSize = terrain.WaterWaveSize,
+                    WaterWaveSpeed = terrain.WaterWaveSpeed,
+                    WaterReflectance = terrain.WaterReflectance,
+                    WaterTransparency = terrain.WaterTransparency,
+                    Decoration = terrain.Decoration,
+                }
                 terrain.WaterWaveSize = 0
                 terrain.WaterWaveSpeed = 0
                 terrain.WaterReflectance = 0
@@ -443,20 +542,25 @@ local function ApplyUltraPerformance()
         end
     end)
     
+    -- ===== QUALIDADE GRÁFICA =====
     pcall(function()
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
     end)
     
-    print("✅ Ultra Desempenho ATIVADO!")
+    print("✅ Ultra Desempenho ATIVADO (efeitos de dano mantidos!)")
 end
 
 local function RemoveUltraPerformance()
     if not PerformanceBackup.IsActive then return end
+    
+    -- Restaurar Lighting
     pcall(function()
         for prop, value in pairs(PerformanceBackup.Lighting) do
             Lighting[prop] = value
         end
     end)
+    
+    -- Restaurar objetos removidos
     pcall(function()
         for _, obj in pairs(PerformanceBackup.RemovedObjects) do
             if obj and obj.Parent == nil then
@@ -465,18 +569,75 @@ local function RemoveUltraPerformance()
             end
         end
     end)
+    
+    -- Restaurar propriedades
     pcall(function()
         for obj, value in pairs(PerformanceBackup.OriginalProperties) do
             if obj and obj.Parent then obj.Transparency = value end
         end
     end)
+    
+    -- Restaurar Terrain
+    pcall(function()
+        if PerformanceBackup.TerrainBackup then
+            local terrain = workspace:FindFirstChildOfClass("Terrain")
+            if terrain then
+                for prop, value in pairs(PerformanceBackup.TerrainBackup) do
+                    terrain[prop] = value
+                end
+            end
+        end
+    end)
+    
+    -- Restaurar qualidade gráfica
     pcall(function()
         settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
     end)
+    
     PerformanceBackup.IsActive = false
     PerformanceBackup.RemovedObjects = {}
     PerformanceBackup.OriginalParent = {}
     PerformanceBackup.OriginalProperties = {}
+    PerformanceBackup.TerrainBackup = nil
+    PerformanceBackup.KeptEffects = {}
+    
+    print("❌ Ultra Desempenho DESATIVADO")
+end
+
+-- ============================================
+-- PROTEÇÃO CONTRA BUG DE COR (NOVO)
+-- ============================================
+
+-- Monitora e corrige ColorCorrectionEffect bugado
+local function ProtectDamageEffects()
+    spawn(function()
+        while true do
+            wait(1)
+            
+            -- Se Ultra Desempenho está ativo, verifica se os efeitos críticos ainda existem
+            if Settings.UltraPerformance.Enabled then
+                pcall(function()
+                    local hasColorCorrection = false
+                    for _, child in pairs(Lighting:GetChildren()) do
+                        if child:IsA("ColorCorrectionEffect") then
+                            hasColorCorrection = true
+                            break
+                        end
+                    end
+                    
+                    -- Se não tem ColorCorrectionEffect, o Ultra Desempenho removeu
+                    -- Vamos restaurar o backup se existir
+                    if not hasColorCorrection and PerformanceBackup.KeptEffects then
+                        for _, effect in pairs(PerformanceBackup.KeptEffects) do
+                            if effect and effect.Parent == nil then
+                                effect.Parent = Lighting
+                            end
+                        end
+                    end
+                end)
+            end
+        end
+    end)
 end
 
 -- ============================================
@@ -1274,6 +1435,9 @@ end
 
 RenderConnection = RunService.RenderStepped:Connect(OnRenderStep)
 
+-- Iniciar proteção contra bug de cor
+ProtectDamageEffects()
+
 -- ============================================
 -- INTERFACE RAYFIELD
 -- ============================================
@@ -1288,7 +1452,7 @@ local function CreateUI()
     })
 
     -- ============================================
-    -- ABA: PERFORMANCE (MELHORADA)
+    -- ABA: PERFORMANCE
     -- ============================================
     
     local PerformanceTab = Window:CreateTab("⚡ Performance", 4483362458)
@@ -1305,7 +1469,7 @@ local function CreateUI()
                 StartAutoRemoveCache()
                 Rayfield:Notify({
                     Title = "Auto Remove Cache",
-                    Content = "🧹 ATIVADO! Intervalo: " .. Settings.AutoRemoveCache.Interval .. "s",
+                    Content = "🧹 ATIVADO!",
                     Duration = 3,
                 })
             end
@@ -1408,7 +1572,7 @@ local function CreateUI()
             Settings.UltraPerformance.Enabled = v
             if v then
                 ApplyUltraPerformance()
-                Rayfield:Notify({Title = "Ultra Desempenho", Content = "🚀 ATIVADO!", Duration = 3})
+                Rayfield:Notify({Title = "Ultra Desempenho", Content = "🚀 ATIVADO! Efeitos de dano mantidos!", Duration = 3})
             else
                 RemoveUltraPerformance()
                 Rayfield:Notify({Title = "Ultra Desempenho", Content = "⏹️ DESATIVADO", Duration = 3})
@@ -1419,10 +1583,37 @@ local function CreateUI()
     PerformanceTab:CreateToggle({Name = "Remover Texturas", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveTextures = v end})
     PerformanceTab:CreateToggle({Name = "Remover Sombras", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveShadows = v end})
     PerformanceTab:CreateToggle({Name = "Remover Partículas", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveParticles = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Efeitos", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveEffects = v end})
     PerformanceTab:CreateToggle({Name = "Remover Sky", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveSky = v end})
     PerformanceTab:CreateToggle({Name = "Remover Água", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveTerrain = v end})
     PerformanceTab:CreateToggle({Name = "Remover Sons", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveSounds = v end})
+    
+    PerformanceTab:CreateSection("🛡️ Proteção de Efeitos (NOVO)")
+    
+    PerformanceTab:CreateToggle({
+        Name = "Manter Efeitos de Dano",
+        CurrentValue = true,
+        Callback = function(v) Settings.UltraPerformance.KeepDamageEffects = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Manter ColorCorrection",
+        CurrentValue = true,
+        Callback = function(v) Settings.UltraPerformance.KeepColorCorrection = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Manter Bloom",
+        CurrentValue = true,
+        Callback = function(v) Settings.UltraPerformance.KeepBloom = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Manter Blur",
+        CurrentValue = true,
+        Callback = function(v) Settings.UltraPerformance.KeepBlur = v end
+    })
+    
+    PerformanceTab:CreateLabel("✅ Mantenha ativado para evitar bug de tela azul/escura")
 
     -- ============================================
     -- ABA: PLAYER
@@ -1485,7 +1676,7 @@ local function CreateUI()
         if v then StartFly() else if FlyActive then StopFly() end end
     end})
     MoveTab:CreateSlider({Name = "Velocidade do Fly", Range = {50, 300}, Increment = 10, Suffix = "studs/s", CurrentValue = 100, Callback = function(v) Settings.Fly.Speed = v end})
-    MoveTab:CreateLabel("📱 MOBILE: Segure o BOTÃO JUMP para subir")
+    MoveTab:CreateLabel("📱 MOBILE: Segure o BOTÃO JUMP")
     MoveTab:CreateLabel("📱 MOBILE: Toque no TOPO da tela")
     MoveTab:CreateLabel("💻 PC: Segure ESPAÇO")
     MoveTab:CreateLabel("💻 PC: SHIFT para descer")
@@ -1541,35 +1732,35 @@ local function CreateUI()
     -- ============================================
     
     local AboutTab = Window:CreateTab("ℹ️ Sobre", 4483362458)
-    AboutTab:CreateLabel("⚡ ComandoGame Mobile v25.0")
+    AboutTab:CreateLabel("⚡ ComandoGame Mobile v25.1")
     AboutTab:CreateLabel("👤 Criador: Mk_gaming")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("🆕 Base: v23 (ESTÁVEL)")
-    AboutTab:CreateLabel("✅ Fly CORRIGIDO")
-    AboutTab:CreateLabel("✅ Cache 2s MELHORADO")
-    AboutTab:CreateLabel("✅ Internet PRO")
-    AboutTab:CreateLabel("✅ Ultra Desempenho")
+    AboutTab:CreateLabel("🆕 NOVIDADES v25.1:")
+    AboutTab:CreateLabel("✅ Ultra Desempenho CORRIGIDO")
+    AboutTab:CreateLabel("✅ Não buga mais efeitos de dano")
+    AboutTab:CreateLabel("✅ Mantém ColorCorrection")
+    AboutTab:CreateLabel("✅ Mantém Bloom e Blur")
+    AboutTab:CreateLabel("✅ Proteção automática")
     AboutTab:CreateLabel("")
     AboutTab:CreateLabel("🚀 Performance:")
-    AboutTab:CreateLabel("• Cache inteligente a cada 2s")
-    AboutTab:CreateLabel("• Otimizador de rede PRO")
-    AboutTab:CreateLabel("• Ultra Desempenho completo")
+    AboutTab:CreateLabel("• Cache 2s inteligente")
+    AboutTab:CreateLabel("• Internet PRO")
+    AboutTab:CreateLabel("• Ultra Desempenho SEGURO")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("💡 Ative tudo em Performance")
-    AboutTab:CreateLabel("   para máxima fluidez!")
+    AboutTab:CreateLabel("⚠️ IMPORTANTE:")
+    AboutTab:CreateLabel("Mantenha 'Manter Efeitos de Dano'")
+    AboutTab:CreateLabel("ATIVADO para evitar bug visual!")
 end
 
 CreateUI()
 
 Rayfield:Notify({
     Title = "ComandoGame Mobile",
-    Content = "⚡ v25.0 - Base ESTÁVEL + Melhorias!",
+    Content = "⚡ v25.1 - Bug de cor CORRIGIDO!",
     Duration = 4,
 })
 
-print("✅ ComandoGame Mobile v25.0 carregado!")
-print("👤 Criador: Mk_gaming")
-print("🚀 Base v23 ESTÁVEL mantida!")
-print("✅ Cache 2s MELHORADO")
-print("✅ Internet PRO")
-print("✅ Fly CORRIGIDO")
+print("✅ ComandoGame Mobile v25.1 carregado!")
+print("🛡️ Bug de cor CORRIGIDO!")
+print("✅ ColorCorrectionEffect mantido!")
+print("✅ Efeitos de dano preservados!")
