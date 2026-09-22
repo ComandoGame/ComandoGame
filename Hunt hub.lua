@@ -1,8 +1,9 @@
 --[[
     COMANDOGAME - MOBILE EDITION
-    Versão: 28.2.0
+    Versão: 29.0.0
     Criador: Mk_gaming
-    FLY - WASD puro (sem ESPAÇO/SHIFT)
+    FLY LIVRE - WASD + Câmera (PC) / Direcional (Mobile)
+    SEM Espaço e SEM Shift
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -27,16 +28,13 @@ local Settings = {
     Noclip = { Enabled = false },
     Speed = { Enabled = false, Value = 300 },
     Jump = { Enabled = false, Value = 150 },
-    -- FLY - Apenas WASD (sem espaço/shift)
+    -- FLY LIVRE (SEM ESPAÇO/SHIFT)
     Fly = {
         Enabled = false,
-        Speed = 150,           -- Velocidade padrão
-        VerticalSpeed = 150,   -- Mesma velocidade para todas as direções
+        Speed = 150,           -- Velocidade geral
         AntiReset = true,
         AutoRestart = true,
         AutoNoclip = true,
-        MobileHover = true,
-        CameraBased = true,    -- Movimento baseado na câmera (subir/descer com o mouse)
     },
     ESP = { Enabled = false, MaxDistance = 100000 },
     NoFog = { Enabled = false },
@@ -83,7 +81,6 @@ local FlyPlayerActive = false
 local FlyPlayerBodyVelocity = nil
 local FlyPlayerBodyGyro = nil
 local FlyPlayerOriginalY = 0
-local JumpHeld = false
 local RenderConnection = nil
 local OriginalFog = nil
 local PlayerTeam = nil
@@ -103,7 +100,7 @@ local PerformanceBackup = {
 }
 
 -- ============================================
--- FUNÇÃO DE PING
+-- FUNÇÕES ÚTEIS
 -- ============================================
 
 local function GetPing()
@@ -456,10 +453,6 @@ local function RemoveUltraPerformance()
     PerformanceBackup.KeptEffects = {}
 end
 
--- ============================================
--- PROTEÇÃO DE EFEITOS
--- ============================================
-
 local function ProtectDamageEffects()
     spawn(function()
         while true do
@@ -529,7 +522,7 @@ local function IsEnemy(player)
 end
 
 -- ============================================
--- FLY - APENAS WASD (SEM ESPAÇO/SHIFT)
+-- FLY LIVRE - SEM ESPAÇO/SHIFT (v29)
 -- ============================================
 
 local IS_MOBILE = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -581,7 +574,7 @@ local function StartFly()
     end
     
     CreateFlyInstances()
-    Rayfield:Notify({Title = "Fly", Content = "✅ ATIVADO! WASD/Direcional", Duration = 2})
+    Rayfield:Notify({Title = "Fly Livre", Content = "✅ ATIVADO! WASD/Direcional", Duration = 2})
 end
 
 local function StopFly()
@@ -642,7 +635,9 @@ local function AntiResetFly()
     end
 end
 
--- ===== UPDATE FLY: APENAS WASD (sem espaço/shift) =====
+-- ===== ATUALIZAÇÃO DO FLY LIVRE =====
+-- PC: WASD move na direção da CÂMERA (sobe/desce conforme olhar)
+-- MOBILE: direcional move na direção da CÂMERA
 local function UpdateFly()
     if not FlyActive or not Settings.Fly.Enabled then return end
     if not LocalPlayer.Character then return end
@@ -652,52 +647,53 @@ local function UpdateFly()
     if not rootPart or not humanoid then return end
     if not FlyBodyVelocity or not FlyBodyGyro then return end
     
-    local moveDirection = Vector3.new(0, 0, 0)
     local speed = Settings.Fly.Speed or 150
-    
-    -- ===== MOBILE: DIRECIONAL =====
-    if humanoid.MoveDirection.Magnitude > 0 then
-        moveDirection = humanoid.MoveDirection
-    end
-    
-    -- ===== PC: WASD + CÂMERA (movimento 3D) =====
-    -- No PC, o movimento é baseado na direção da câmera (mouse)
-    -- Isso permite subir/descer olhando para cima/baixo
-    if moveDirection.Magnitude == 0 and not IS_MOBILE then
-        local camCFrame = Camera.CFrame
-        local forward = camCFrame.LookVector      -- Direção que a câmera aponta (inclui Y)
-        local right = camCFrame.RightVector       -- Direita da câmera (horizontal)
-        
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-            moveDirection = moveDirection + forward  -- Vai para onde a câmera olha (pode subir/descer)
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-            moveDirection = moveDirection - forward  -- Volta (oposto da câmera)
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-            moveDirection = moveDirection + right    -- Direita (horizontal)
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-            moveDirection = moveDirection - right    -- Esquerda (horizontal)
-        end
-    end
-    
-    -- ===== APLICAR VELOCIDADE =====
     local velocity = Vector3.new(0, 0, 0)
     
-    if moveDirection.Magnitude > 0 then
-        -- Normaliza para velocidade consistente em qualquer direção
-        velocity = moveDirection.Unit * speed
-    end
-    
-    -- Mobile hover: fica no ar automaticamente
-    if IS_MOBILE and Settings.Fly.MobileHover and velocity.Magnitude == 0 then
-        velocity = Vector3.new(0, 5, 0)
+    -- ===== MOBILE: direcional =====
+    if IS_MOBILE then
+        local moveDir = humanoid.MoveDirection
+        if moveDir.Magnitude > 0 then
+            -- Direção baseada na câmera (livre 3D)
+            local camCFrame = Camera.CFrame
+            local camForward = camCFrame.LookVector
+            local camRight = camCFrame.RightVector
+            
+            -- Combina direção do direcional com a câmera
+            local forwardInput = moveDir.Z
+            local rightInput = moveDir.X
+            
+            velocity = (camForward * forwardInput + camRight * rightInput).Unit * speed
+        end
+    else
+        -- ===== PC: WASD (livre 3D - sobe/desce conforme olhar) =====
+        local camCFrame = Camera.CFrame
+        local camForward = camCFrame.LookVector
+        local camRight = camCFrame.RightVector
+        
+        local moveVec = Vector3.new(0, 0, 0)
+        
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
+            moveVec = moveVec + camForward
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
+            moveVec = moveVec - camForward
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
+            moveVec = moveVec + camRight
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
+            moveVec = moveVec - camRight
+        end
+        
+        if moveVec.Magnitude > 0 then
+            velocity = moveVec.Unit * speed
+        end
     end
     
     FlyBodyVelocity.Velocity = velocity
     
-    -- Anti-Reset: mantém orientação
+    -- Anti-Reset: mantém orientação vertical estável
     if Settings.Fly.AntiReset then
         FlyBodyGyro.CFrame = CFrame.new(rootPart.Position)
     end
@@ -1534,7 +1530,7 @@ local function CreateUI()
     MoveTab:CreateSlider({Name = "Altura", Range = {50, 300}, Increment = 10, Suffix = "JumpPower", CurrentValue = 150, Callback = function(v) Settings.Jump.Value = v ApplySpeedAndJump() end})
     MoveTab:CreateToggle({Name = "Infinite Jump", CurrentValue = false, Callback = function(v) Settings.InfiniteJump.Enabled = v end})
     
-    MoveTab:CreateSection("🚀 Fly")
+    MoveTab:CreateSection("🚀 Fly Livre")
     
     MoveTab:CreateToggle({
         Name = "Fly - Voar Livre",
@@ -1567,21 +1563,21 @@ local function CreateUI()
     })
     
     MoveTab:CreateToggle({
-        Name = "Noclip Automático no Fly",
+        Name = "Noclip Automático",
         CurrentValue = true,
         Callback = function(v) Settings.Fly.AutoNoclip = v end
     })
     
-    MoveTab:CreateToggle({
-        Name = "Mobile Hover (fica no ar)",
-        CurrentValue = true,
-        Callback = function(v) Settings.Fly.MobileHover = v end
-    })
-    
+    MoveTab:CreateLabel("")
+    MoveTab:CreateLabel("🎮 COMO USAR:")
     MoveTab:CreateLabel("📱 MOBILE: use o DIRECIONAL")
-    MoveTab:CreateLabel("💻 PC: WASD (câmera controla altura)")
-    MoveTab:CreateLabel("💡 Olhe para cima e aperte W = sobe")
-    MoveTab:CreateLabel("💡 Olhe para baixo e aperte W = desce")
+    MoveTab:CreateLabel("💻 PC: use WASD")
+    MoveTab:CreateLabel("")
+    MoveTab:CreateLabel("✨ Olhe para CIMA e mova = SOBE")
+    MoveTab:CreateLabel("✨ Olhe para BAIXO e mova = DESCE")
+    MoveTab:CreateLabel("✨ Olhe reto e mova = ANDA NO AR")
+    MoveTab:CreateLabel("")
+    MoveTab:CreateLabel("🚫 SEM ESPAÇO / SEM SHIFT")
     
     MoveTab:CreateSection("✈️ Fly Player (Hover)")
     MoveTab:CreateToggle({Name = "Fly Player (Hover)", CurrentValue = false, Callback = function(v)
@@ -1634,34 +1630,36 @@ local function CreateUI()
     -- ============================================
     
     local AboutTab = Window:CreateTab("ℹ️ Sobre", 4483362458)
-    AboutTab:CreateLabel("⚡ ComandoGame Mobile v28.2")
+    AboutTab:CreateLabel("⚡ ComandoGame Mobile v29.0")
     AboutTab:CreateLabel("👤 Criador: Mk_gaming")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("🆕 v28.2:")
-    AboutTab:CreateLabel("✅ Fly APENAS com WASD")
-    AboutTab:CreateLabel("❌ SEM ESPAÇO/SHIFT")
+    AboutTab:CreateLabel("🆕 v29.0:")
+    AboutTab:CreateLabel("✅ FLY LIVRE 3D")
+    AboutTab:CreateLabel("🚫 Sem ESPAÇO / Sem SHIFT")
     AboutTab:CreateLabel("")
     AboutTab:CreateLabel("📱 MOBILE:")
     AboutTab:CreateLabel("• Direcional = voar livremente")
-    AboutTab:CreateLabel("• Hover automático")
+    AboutTab:CreateLabel("• Olhar pra cima = sobe")
+    AboutTab:CreateLabel("• Olhar pra baixo = desce")
     AboutTab:CreateLabel("")
     AboutTab:CreateLabel("💻 PC:")
-    AboutTab:CreateLabel("• WASD = voar em 3D")
-    AboutTab:CreateLabel("• Olhe para cima + W = sobe")
-    AboutTab:CreateLabel("• Olhe para baixo + W = desce")
-    AboutTab:CreateLabel("• Câmera controla a direção")
+    AboutTab:CreateLabel("• WASD = voar livremente")
+    AboutTab:CreateLabel("• Olhar pra cima = sobe")
+    AboutTab:CreateLabel("• Olhar pra baixo = desce")
+    AboutTab:CreateLabel("")
+    AboutTab:CreateLabel("✨ Voo natural em 3D!")
 end
 
 CreateUI()
 
 Rayfield:Notify({
     Title = "ComandoGame Mobile",
-    Content = "⚡ v28.2 - Fly APENAS WASD!",
+    Content = "⚡ v29.0 - FLY LIVRE 3D!",
     Duration = 5,
 })
 
-print("✅ ComandoGame Mobile v28.2 carregado!")
-print("🚀 FLY APENAS COM WASD!")
-print("💻 PC: Olhe para cima + W = sobe")
-print("💻 PC: Olhe para baixo + W = desce")
-print("📱 MOBILE: direcional livre")
+print("✅ ComandoGame Mobile v29.0 carregado!")
+print("🚀 FLY LIVRE - Sem Espaço/Shift")
+print("📱 Mobile: direcional + câmera")
+print("💻 PC: WASD + câmera")
+print("✨ Olhe pra cima/baixo para subir/descer")
