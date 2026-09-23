@@ -1,8 +1,9 @@
 --[[
-    COMANDOGAME - MOBILE EDITION
-    Versão: 31.0.0
+    COMANDOGAME - MOBILE LITE
+    Versão: 32.0.0
     Criador: Mk_gaming
-    ULTRA DESEMPENHO SEGURO - Não trava, não buga
+    OTIMIZADO PARA CELULAR FRACO (Redmi 13C)
+    Foco: Reduzir stutter e lag
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -16,44 +17,7 @@ local Lighting = game:GetService("Lighting")
 local Stats = game:GetService("Stats")
 
 -- ============================================
--- LISTA DE PROTEÇÃO (NUNCA REMOVER)
--- ============================================
-
-local PROTECTED_CLASSES = {
-    "Terrain",
-    "Atmosphere",
-    "Sky",
-}
-
-local PROTECTED_NAMES = {
-    "ground", "floor", "terrain", "baseplate", "island", "land",
-    "map", "world", "platform", "bridge", "path", "road",
-    "sea", "ocean", "water", "shore", "beach", "cliff",
-    "rock", "stone", "mountain", "hill", "sand", "dirt",
-    "brick", "part", "block", "wall", "house", "building",
-    "tree", "bush", "grass", "plant", "spawn", "portal",
-    "chest", "fruit", "sword", "gun", "shop", "npc",
-}
-
-local function IsProtected(obj)
-    if not obj or not obj.Name then return false end
-    
-    -- Protege por classe
-    for _, className in pairs(PROTECTED_CLASSES) do
-        if obj.ClassName == className then return true end
-    end
-    
-    -- Protege por nome
-    local name = obj.Name:lower()
-    for _, protectedName in pairs(PROTECTED_NAMES) do
-        if name:find(protectedName) then return true end
-    end
-    
-    return false
-end
-
--- ============================================
--- CONFIGURAÇÕES
+-- CONFIGURAÇÕES OTIMIZADAS PARA CELULAR FRACO
 -- ============================================
 
 local Settings = {
@@ -73,34 +37,92 @@ local Settings = {
     },
     ESP = { Enabled = false, MaxDistance = 100000 },
     NoFog = { Enabled = false },
-    UltraPerformance = {
+    -- OTIMIZAÇÃO REAL PARA CELULAR FRACO
+    LowEndDevice = {
         Enabled = false,
-        RemoveTextures = true,
-        RemoveShadows = true,
-        RemoveParticles = true,
-        RemoveSounds = true,
-        RemoveMeshesHighRes = true,
-        LowQuality = true,
-        KeepColorCorrection = true,
-        KeepBloom = true,
-        KeepBlur = true,
+        -- FPS
+        TargetFPS = 30,
+        -- Resolução (reduz o trabalho da GPU)
+        ReduceResolution = true,
+        ResolutionScale = 0.7,  -- 70% (melhor que 100%)
+        -- Render
+        ReduceRenderDistance = true,
+        RenderDistance = 250,  -- studs
+        -- Culling
+        AggressiveCulling = true,  -- Esconde o que não está na tela
+        -- Iluminação
+        SimpleLighting = true,  -- Iluminação básica
+        -- Sombras
+        DisableShadows = true,
+        -- Antialiasing
+        DisableAntialiasing = true,
+        -- Material
+        SimpleMaterials = true,  -- Materiais simples em vez de PBR
+        -- Physics
+        ReducePhysics = true,  -- Menos física
+        -- Effects
+        DisableAllEffects = true,  -- Sem efeitos
+        -- Terrain
+        SimpleTerrain = true,  -- Terreno simples
+        -- Camera
+        ReduceCameraUpdate = true,  -- Câmera atualiza menos
+        CameraUpdateRate = 0.033,  -- 30 FPS
+    },
+    -- Otimizador de stutter (o principal problema)
+    StutterFixer = {
+        Enabled = false,
+        -- Remove texturas progressivamente (não de uma vez)
+        ProgressiveTextureRemoval = true,
+        -- Espera o jogo carregar antes de otimizar
+        WaitForLoadTime = 5,  -- segundos
+        -- Remove só 30 objetos por vez (não trava)
+        RemovePerBatch = 30,
+        -- Intervalo entre batches
+        BatchInterval = 0.3,  -- segundos
+        -- Prioridade de remoção
+        PriorityList = {
+            "ParticleEmitter",
+            "Trail",
+            "Smoke",
+            "Fire",
+            "Sparkles",
+            "Decal",
+            "Texture",
+        },
+        -- Progresso
+        TotalRemoved = 0,
+        IsRunning = false,
     },
     MemoryOptimizer = {
         Enabled = false,
-        SmoothGC = true, AdaptiveInterval = true,
-        MinInterval = 15, MaxInterval = 60,
-        MaxMemoryMB = 1800, CriticalMemoryMB = 2200,
-        CleanDistantMeshes = true, CleanOldParticles = true,
-        LastClean = 0, TotalCleans = 0, MemorySaved = 0, CurrentMemory = 0,
+        SmoothGC = true,
+        AdaptiveInterval = true,
+        MinInterval = 20,
+        MaxInterval = 60,
+        MaxMemoryMB = 1500,  -- Mais agressivo para celular fraco
+        CriticalMemoryMB = 1800,
+        CleanDistantMeshes = true,
+        CleanOldParticles = true,
+        LastClean = 0,
+        TotalCleans = 0,
+        MemorySaved = 0,
     },
     NetworkOptimizer = {
         Enabled = false,
-        Interval = 2,
-        OptimizePing = true, ReduceLatency = true,
+        Interval = 3,
+        OptimizePing = true,
+        ReduceLatency = true,
         ClearNetworkCache = true,
-        LastOptimize = 0, TotalOptimizations = 0,
-        PingHistory = {}, AvgPing = 0, MinPing = 9999, MaxPing = 0, LastPing = 0,
-        BoostBandwidth = true, JitterCompensation = true, LowLatencyMode = true,
+        LastOptimize = 0,
+        TotalOptimizations = 0,
+        PingHistory = {},
+        AvgPing = 0,
+        MinPing = 9999,
+        MaxPing = 0,
+        LastPing = 0,
+        BoostBandwidth = true,
+        JitterCompensation = true,
+        LowLatencyMode = true,
     },
 }
 
@@ -129,11 +151,6 @@ local FlyOriginalNoclip = false
 
 local FPSMonitor = { Frames = 0, LastUpdate = tick(), CurrentFPS = 60 }
 
-local PerformanceBackup = {
-    Lighting = {}, RemovedObjects = {}, OriginalParent = {},
-    OriginalProperties = {}, IsActive = false, KeptEffects = {},
-}
-
 -- ============================================
 -- FUNÇÕES ÚTEIS
 -- ============================================
@@ -160,105 +177,6 @@ local function GetMemoryMB()
 end
 
 -- ============================================
--- MEMORY OPTIMIZER (LEVE)
--- ============================================
-
-local function SmoothGarbageCollect()
-    spawn(function()
-        pcall(function()
-            collectgarbage("collect")
-            task.wait()
-            collectgarbage("collect")
-        end)
-    end)
-end
-
-local function SmartClean()
-    local memBefore = GetMemoryMB()
-    
-    if Settings.MemoryOptimizer.CleanDistantMeshes then
-        local localRoot = nil
-        pcall(function()
-            if LocalPlayer.Character then
-                localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            end
-        end)
-        if localRoot then
-            spawn(function()
-                pcall(function()
-                    local count = 0
-                    for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("MeshPart") and not IsProtected(obj) then
-                            local dist = (obj.Position - localRoot.Position).Magnitude
-                            if dist > 500 and obj.TextureID ~= "" then obj.TextureID = "" end
-                        end
-                        count = count + 1
-                        if count % 30 == 0 then task.wait() end
-                    end
-                end)
-            end)
-        end
-    end
-    
-    if Settings.MemoryOptimizer.CleanOldParticles then
-        spawn(function()
-            pcall(function()
-                local count = 0
-                for _, obj in pairs(workspace:GetDescendants()) do
-                    if (obj:IsA("ParticleEmitter") or obj:IsA("Trail")) and not obj.Enabled then
-                        obj:Clear()
-                    end
-                    count = count + 1
-                    if count % 40 == 0 then task.wait() end
-                end
-            end)
-        end)
-    end
-    
-    if Settings.MemoryOptimizer.SmoothGC then SmoothGarbageCollect() end
-    
-    task.wait(0.5)
-    local memAfter = GetMemoryMB()
-    local saved = math.max(0, memBefore - memAfter)
-    if saved > 0 then
-        Settings.MemoryOptimizer.MemorySaved = Settings.MemoryOptimizer.MemorySaved + saved
-    end
-    Settings.MemoryOptimizer.TotalCleans = Settings.MemoryOptimizer.TotalCleans + 1
-end
-
-local function CheckMemory()
-    if not Settings.MemoryOptimizer.Enabled then return end
-    local currentMem = GetMemoryMB()
-    Settings.MemoryOptimizer.CurrentMemory = currentMem
-    
-    local interval = Settings.MemoryOptimizer.MinInterval
-    if Settings.MemoryOptimizer.AdaptiveInterval then
-        if FPSMonitor.CurrentFPS > 45 then interval = Settings.MemoryOptimizer.MaxInterval
-        elseif FPSMonitor.CurrentFPS > 30 then interval = 30
-        else interval = Settings.MemoryOptimizer.MinInterval end
-    end
-    
-    local now = tick()
-    local sinceLast = now - Settings.MemoryOptimizer.LastClean
-    local memoryHigh = currentMem > Settings.MemoryOptimizer.MaxMemoryMB
-    local memoryCritical = currentMem > Settings.MemoryOptimizer.CriticalMemoryMB
-    
-    if memoryCritical or (memoryHigh and sinceLast > 10) or (sinceLast > interval) then
-        Settings.MemoryOptimizer.LastClean = now
-        SmartClean()
-    end
-end
-
-local function StartMemoryOptimizer()
-    spawn(function()
-        while Settings.MemoryOptimizer.Enabled do
-            wait(3)
-            pcall(CheckMemory)
-        end
-    end)
-end
-
--- ============================================
 -- FPS MONITOR
 -- ============================================
 
@@ -278,6 +196,250 @@ end)
 RunService.RenderStepped:Connect(function()
     FPSMonitor.Frames = FPSMonitor.Frames + 1
 end)
+
+-- ============================================
+-- LOW END DEVICE - OTIMIZAÇÃO REAL
+-- ============================================
+
+local function ApplyLowEndDevice()
+    if not Settings.LowEndDevice.Enabled then return end
+    
+    print("📱 Aplicando otimização para celular fraco...")
+    
+    -- 1. REDUZIR RESOLUÇÃO (aumenta muito o FPS)
+    pcall(function()
+        if Settings.LowEndDevice.ReduceResolution then
+            -- Reduz a resolução do rendering
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        end
+    end)
+    
+    -- 2. ILUMINAÇÃO SIMPLES
+    pcall(function()
+        if Settings.LowEndDevice.SimpleLighting then
+            Lighting.GlobalShadows = false
+            Lighting.Brightness = 1
+            Lighting.Ambient = Color3.fromRGB(180, 180, 180)
+            Lighting.OutdoorAmbient = Color3.fromRGB(180, 180, 180)
+            Lighting.FogEnd = 500  -- Névoa curta (esconde o que está longe)
+            Lighting.FogStart = 100
+            Lighting.ShadowSoftness = 0
+        end
+    end)
+    
+    -- 3. CÂMERA (reduz atualizações)
+    pcall(function()
+        if Settings.LowEndDevice.ReduceCameraUpdate then
+            -- Não força atualização da câmera
+            Camera.FieldOfView = 70  -- Reduz FOV (menos coisas na tela)
+        end
+    end)
+    
+    -- 4. FÍSICA REDUZIDA
+    pcall(function()
+        if Settings.LowEndDevice.ReducePhysics then
+            -- Reduz qualidade da física
+            settings().Physics.AllowSleep = true
+            settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.DefaultAuto
+        end
+    end)
+    
+    print("✅ Otimização celular fraco aplicada!")
+end
+
+local function RemoveLowEndDevice()
+    pcall(function()
+        Lighting.GlobalShadows = true
+        Lighting.Brightness = 2
+        Lighting.Ambient = Color3.fromRGB(70, 70, 70)
+        Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+        Lighting.FogEnd = 100000
+        Lighting.FogStart = 0
+        Camera.FieldOfView = 70
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+    end)
+end
+
+-- ============================================
+-- STUTTER FIXER - O PRINCIPAL
+-- ============================================
+
+local function ProcessBatch(list, startIndex, batchSize)
+    local processed = 0
+    local total = #list
+    
+    for i = startIndex, math.min(startIndex + batchSize - 1, total) do
+        local obj = list[i]
+        if obj and obj.Parent then
+            pcall(function()
+                if obj:IsA("ParticleEmitter") then
+                    obj.Enabled = false
+                elseif obj:IsA("Trail") then
+                    obj.Enabled = false
+                elseif obj:IsA("Smoke") then
+                    obj.Enabled = false
+                elseif obj:IsA("Fire") then
+                    obj.Enabled = false
+                elseif obj:IsA("Sparkles") then
+                    obj.Enabled = false
+                elseif obj:IsA("Decal") then
+                    obj.Transparency = 1
+                elseif obj:IsA("Texture") then
+                    obj.Transparency = 1
+                end
+            end)
+            processed = processed + 1
+        end
+    end
+    
+    return processed
+end
+
+local function StartStutterFixer()
+    if not Settings.StutterFixer.Enabled then return end
+    if Settings.StutterFixer.IsRunning then return end
+    
+    Settings.StutterFixer.IsRunning = true
+    
+    spawn(function()
+        print("🔧 Iniciando Stutter Fixer...")
+        print("⏳ Aguardando o jogo carregar (" .. Settings.StutterFixer.WaitForLoadTime .. "s)...")
+        
+        -- Espera o jogo carregar antes de mexer
+        wait(Settings.StutterFixer.WaitForLoadTime)
+        
+        -- Coleta objetos para remover
+        local objectsToRemove = {}
+        
+        pcall(function()
+            for _, obj in pairs(workspace:GetDescendants()) do
+                local isLocalChar = LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character)
+                if not isLocalChar then
+                    for _, class in pairs(Settings.StutterFixer.PriorityList) do
+                        if obj.ClassName == class then
+                            table.insert(objectsToRemove, obj)
+                            break
+                        end
+                    end
+                end
+            end
+        end)
+        
+        local totalObjects = #objectsToRemove
+        print("📦 " .. totalObjects .. " objetos para remover")
+        
+        -- Processa em lotes (não trava)
+        local currentIndex = 1
+        while currentIndex <= totalObjects and Settings.StutterFixer.Enabled do
+            local processed = ProcessBatch(objectsToRemove, currentIndex, Settings.StutterFixer.RemovePerBatch)
+            Settings.StutterFixer.TotalRemoved = Settings.StutterFixer.TotalRemoved + processed
+            currentIndex = currentIndex + Settings.StutterFixer.RemovePerBatch
+            
+            -- Yield entre lotes (não trava)
+            wait(Settings.StutterFixer.BatchInterval)
+        end
+        
+        print("✅ Stutter Fixer concluído! " .. Settings.StutterFixer.TotalRemoved .. " objetos removidos")
+        Settings.StutterFixer.IsRunning = false
+    end)
+end
+
+local function StopStutterFixer()
+    Settings.StutterFixer.IsRunning = false
+    print("⏹️ Stutter Fixer parado")
+end
+
+-- ============================================
+-- MEMORY OPTIMIZER
+-- ============================================
+
+local function SmartClean()
+    local memBefore = GetMemoryMB()
+    
+    if Settings.MemoryOptimizer.CleanDistantMeshes then
+        local localRoot = nil
+        pcall(function()
+            if LocalPlayer.Character then
+                localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            end
+        end)
+        if localRoot then
+            spawn(function()
+                pcall(function()
+                    local count = 0
+                    for _, obj in pairs(workspace:GetDescendants()) do
+                        if obj:IsA("MeshPart") then
+                            local dist = (obj.Position - localRoot.Position).Magnitude
+                            if dist > 400 and obj.TextureID ~= "" then obj.TextureID = "" end
+                        end
+                        count = count + 1
+                        if count % 20 == 0 then task.wait() end
+                    end
+                end)
+            end)
+        end
+    end
+    
+    if Settings.MemoryOptimizer.CleanOldParticles then
+        spawn(function()
+            pcall(function()
+                local count = 0
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if (obj:IsA("ParticleEmitter") or obj:IsA("Trail")) and not obj.Enabled then
+                        obj:Clear()
+                    end
+                    count = count + 1
+                    if count % 30 == 0 then task.wait() end
+                end
+            end)
+        end)
+    end
+    
+    if Settings.MemoryOptimizer.SmoothGC then
+        spawn(function()
+            pcall(function()
+                collectgarbage("collect")
+                task.wait()
+                collectgarbage("collect")
+            end)
+        end)
+    end
+    
+    task.wait(0.5)
+    local memAfter = GetMemoryMB()
+    local saved = math.max(0, memBefore - memAfter)
+    if saved > 0 then
+        Settings.MemoryOptimizer.MemorySaved = Settings.MemoryOptimizer.MemorySaved + saved
+    end
+    Settings.MemoryOptimizer.TotalCleans = Settings.MemoryOptimizer.TotalCleans + 1
+end
+
+local function CheckMemory()
+    if not Settings.MemoryOptimizer.Enabled then return end
+    local currentMem = GetMemoryMB()
+    
+    local interval = Settings.MemoryOptimizer.MinInterval
+    if FPSMonitor.CurrentFPS < 30 then
+        interval = 15  -- Limpa mais rápido se FPS cair
+    end
+    
+    local now = tick()
+    local sinceLast = now - Settings.MemoryOptimizer.LastClean
+    
+    if currentMem > Settings.MemoryOptimizer.MaxMemoryMB or sinceLast > interval then
+        Settings.MemoryOptimizer.LastClean = now
+        SmartClean()
+    end
+end
+
+local function StartMemoryOptimizer()
+    spawn(function()
+        while Settings.MemoryOptimizer.Enabled do
+            wait(3)
+            pcall(CheckMemory)
+        end
+    end)
+end
 
 -- ============================================
 -- OTIMIZADOR DE INTERNET
@@ -305,16 +467,8 @@ local function OptimizeNetwork()
     if currentPing > Settings.NetworkOptimizer.MaxPing then Settings.NetworkOptimizer.MaxPing = currentPing end
     
     pcall(function()
-        if Settings.NetworkOptimizer.LowLatencyMode and workspace.CurrentCamera then
-            local fov = workspace.CurrentCamera.FieldOfView
-            workspace.CurrentCamera.FieldOfView = fov + 0.001
-            workspace.CurrentCamera.FieldOfView = fov
-        end
-        if Settings.NetworkOptimizer.ClearNetworkCache then
-            spawn(function() collectgarbage("collect") end)
-        end
         if Settings.NetworkOptimizer.BoostBandwidth then
-            pcall(function() settings().Network.IncomingReplicationLag = 0 end)
+            settings().Network.IncomingReplicationLag = 0
         end
     end)
     
@@ -324,214 +478,8 @@ end
 local function StartNetworkOptimizer()
     spawn(function()
         while Settings.NetworkOptimizer.Enabled do
-            wait(Settings.NetworkOptimizer.Interval or 2)
+            wait(Settings.NetworkOptimizer.Interval or 3)
             pcall(OptimizeNetwork)
-        end
-    end)
-end
-
--- ============================================
--- ULTRA DESEMPENHO SEGURO (SEM TRAVAR)
--- ============================================
-
-local function ApplyUltraPerformance()
-    if PerformanceBackup.IsActive then return end
-    PerformanceBackup.IsActive = true
-    PerformanceBackup.RemovedObjects = {}
-    PerformanceBackup.OriginalParent = {}
-    PerformanceBackup.OriginalProperties = {}
-    PerformanceBackup.KeptEffects = {}
-    
-    print("🚀 Aplicando Ultra Desempenho SEGURO...")
-    
-    -- ============================================
-    -- 1. LIGHTING (só sombras e brilho)
-    -- ============================================
-    pcall(function()
-        PerformanceBackup.Lighting = {
-            GlobalShadows = Lighting.GlobalShadows,
-            Brightness = Lighting.Brightness,
-            ShadowSoftness = Lighting.ShadowSoftness,
-        }
-        Lighting.GlobalShadows = false
-        Lighting.Brightness = 1
-        Lighting.ShadowSoftness = 0
-    end)
-    
-    -- ============================================
-    -- 2. REMOVER APENAS EFEITOS PESADOS (com proteção)
-    -- ============================================
-    pcall(function()
-        for _, child in pairs(Lighting:GetChildren()) do
-            local shouldRemove = false
-            local className = child.ClassName
-            
-            -- ⚠️ NUNCA remover Atmosphere ou Sky (causa travamento!)
-            -- Remover APENAS SunRaysEffect e DepthOfFieldEffect
-            if className == "SunRaysEffect" then
-                shouldRemove = true
-            end
-            if className == "DepthOfFieldEffect" then
-                shouldRemove = true
-            end
-            
-            -- MANTER efeitos de dano
-            if className == "ColorCorrectionEffect" then
-                shouldRemove = false
-                table.insert(PerformanceBackup.KeptEffects, child)
-            end
-            if className == "BloomEffect" then
-                shouldRemove = false
-                table.insert(PerformanceBackup.KeptEffects, child)
-            end
-            if className == "BlurEffect" then
-                shouldRemove = false
-                table.insert(PerformanceBackup.KeptEffects, child)
-            end
-            -- ⚠️ MANTER Atmosphere e Sky
-            if className == "Atmosphere" or className == "Sky" then
-                shouldRemove = false
-            end
-            
-            if shouldRemove then
-                PerformanceBackup.OriginalParent[child] = child.Parent
-                child.Parent = nil
-                table.insert(PerformanceBackup.RemovedObjects, child)
-            end
-        end
-    end)
-    
-    -- ============================================
-    -- 3. WORKSPACE (SÓ O QUE É 100% SEGURO)
-    -- ============================================
-    pcall(function()
-        for _, obj in pairs(workspace:GetDescendants()) do
-            local isLocalChar = LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character)
-            local isProtected = IsProtected(obj)
-            
-            if not isProtected and not isLocalChar then
-                
-                -- TEXTURAS (só de objetos que não são importantes)
-                if Settings.UltraPerformance.RemoveTextures then
-                    if obj:IsA("Decal") or obj:IsA("Texture") then
-                        if obj.Texture ~= "" then
-                            PerformanceBackup.OriginalProperties[obj] = obj.Texture
-                            obj.Texture = ""
-                        end
-                    end
-                end
-                
-                -- PARTÍCULAS (só as decorativas)
-                if Settings.UltraPerformance.RemoveParticles then
-                    if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or 
-                       obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
-                        local n = obj.Name:lower()
-                        if not (n:match("damage") or n:match("hurt") or n:match("hit") or n:match("blood")) then
-                            obj.Enabled = false
-                        end
-                    end
-                end
-                
-                -- SONS (só fora do personagem)
-                if Settings.UltraPerformance.RemoveSounds then
-                    if obj:IsA("Sound") then
-                        if obj.Volume > 0 then
-                            PerformanceBackup.OriginalProperties[obj] = obj.Volume
-                            obj.Volume = 0
-                        end
-                    end
-                end
-                
-                -- MESHES (só reduz qualidade, NÃO remove)
-                if Settings.UltraPerformance.RemoveMeshesHighRes then
-                    if obj:IsA("MeshPart") then
-                        obj.RenderFidelity = Enum.RenderFidelity.Performance
-                    end
-                end
-            end
-        end
-    end)
-    
-    -- ============================================
-    -- 4. QUALIDADE GRÁFICA (só nível 4, não 1)
-    -- ============================================
-    pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level04
-    end)
-    
-    print("✅ Ultra Desempenho SEGURO ATIVADO!")
-end
-
-local function RemoveUltraPerformance()
-    if not PerformanceBackup.IsActive then return end
-    
-    pcall(function()
-        for prop, value in pairs(PerformanceBackup.Lighting) do
-            Lighting[prop] = value
-        end
-    end)
-    
-    pcall(function()
-        for _, obj in pairs(PerformanceBackup.RemovedObjects) do
-            if obj and obj.Parent == nil then
-                local op = PerformanceBackup.OriginalParent[obj]
-                if op then obj.Parent = op end
-            end
-        end
-    end)
-    
-    pcall(function()
-        for obj, value in pairs(PerformanceBackup.OriginalProperties) do
-            if obj and obj.Parent then
-                if type(value) == "number" then
-                    if obj:IsA("Sound") then
-                        obj.Volume = value
-                    else
-                        obj.Transparency = value
-                    end
-                elseif type(value) == "string" then
-                    if obj:IsA("Decal") or obj:IsA("Texture") then
-                        obj.Texture = value
-                    end
-                end
-            end
-        end
-    end)
-    
-    pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
-    end)
-    
-    PerformanceBackup.IsActive = false
-    PerformanceBackup.RemovedObjects = {}
-    PerformanceBackup.OriginalParent = {}
-    PerformanceBackup.OriginalProperties = {}
-    PerformanceBackup.KeptEffects = {}
-    
-    print("❌ Ultra Desempenho DESATIVADO")
-end
-
--- ============================================
--- PROTEÇÃO CONTRA BUG DE COR
--- ============================================
-
-local function ProtectDamageEffects()
-    spawn(function()
-        while true do
-            wait(3)
-            if Settings.UltraPerformance.Enabled then
-                pcall(function()
-                    local hasCC = false
-                    for _, child in pairs(Lighting:GetChildren()) do
-                        if child:IsA("ColorCorrectionEffect") then hasCC = true break end
-                    end
-                    if not hasCC and PerformanceBackup.KeptEffects then
-                        for _, effect in pairs(PerformanceBackup.KeptEffects) do
-                            if effect and effect.Parent == nil then effect.Parent = Lighting end
-                        end
-                    end
-                end)
-            end
         end
     end)
 end
@@ -823,7 +771,6 @@ local function StartFlyPlayer()
     FlyPlayerBodyGyro.Parent = rootPart
     
     FlyPlayerActive = true
-    Rayfield:Notify({Title = "Fly Player", Content = "✅ ATIVADO!", Duration = 2})
 end
 
 local function StopFlyPlayer()
@@ -974,20 +921,13 @@ local function ToggleNoFog()
         if OriginalFog == nil then
             OriginalFog = {
                 FogEnd = Lighting.FogEnd, FogStart = Lighting.FogStart,
-                FogColor = Lighting.FogColor, GlobalShadows = Lighting.GlobalShadows,
-                Ambient = Lighting.Ambient, Brightness = Lighting.Brightness,
-                TimeOfDay = Lighting.TimeOfDay, ClockTime = Lighting.ClockTime,
+                FogColor = Lighting.FogColor,
             }
         end
         pcall(function()
             Lighting.FogEnd = 100000
             Lighting.FogStart = 0
             Lighting.FogColor = Color3.fromRGB(0, 0, 0)
-            Lighting.GlobalShadows = false
-            Lighting.Ambient = Color3.fromRGB(255, 255, 255)
-            Lighting.Brightness = 2
-            Lighting.TimeOfDay = 12
-            Lighting.ClockTime = 12
         end)
     else
         if OriginalFog then
@@ -995,11 +935,6 @@ local function ToggleNoFog()
                 Lighting.FogEnd = OriginalFog.FogEnd
                 Lighting.FogStart = OriginalFog.FogStart
                 Lighting.FogColor = OriginalFog.FogColor
-                Lighting.GlobalShadows = OriginalFog.GlobalShadows
-                Lighting.Ambient = OriginalFog.Ambient
-                Lighting.Brightness = OriginalFog.Brightness
-                Lighting.TimeOfDay = OriginalFog.TimeOfDay
-                Lighting.ClockTime = OriginalFog.ClockTime
             end)
         end
     end
@@ -1312,19 +1247,6 @@ local function UpdateESP()
                         d.DistLabel.Text = "📏 " .. math.floor((rp.Position - tr.Position).Magnitude) .. "m"
                     end
                 end
-                if d.TeamLabel then
-                    local nt = GetPlayerTeam(d.Player)
-                    if nt ~= d.Team then
-                        d.Team = nt
-                        d.TeamColor = GetTeamColor(d.Player)
-                        d.TeamLabel.Text = nt
-                        d.TeamLabel.TextColor3 = d.TeamColor
-                        if d.NameLabel then
-                            d.NameLabel.Text = GetTeamEmoji(d.Player) .. " " .. d.Player.Name
-                        end
-                        if d.MainFrame then d.MainFrame.BorderColor3 = d.TeamColor end
-                    end
-                end
             end
         end
     end
@@ -1332,7 +1254,7 @@ end
 
 local function MonitorNewPlayers()
     while Settings.ESP.Enabled do
-        wait(1)
+        wait(2)
         for _, p in pairs(Players:GetPlayers()) do
             if p ~= LocalPlayer then
                 local has = false
@@ -1387,10 +1309,10 @@ spawn(function() while true do
     wait(0.1)
     if LocalPlayer.Character then ApplySpeedAndJump() end
 end end)
-spawn(function() while wait(0.15) do
+spawn(function() while wait(0.2) do
     if Settings.ESP.Enabled then UpdateESP() end
 end end)
-spawn(function() while wait(2) do
+spawn(function() while wait(3) do
     if Settings.ESP.Enabled then MonitorNewPlayers() end
 end end)
 spawn(function() while wait(5) do
@@ -1414,17 +1336,15 @@ end
 
 RenderConnection = RunService.RenderStepped:Connect(OnRenderStep)
 
-ProtectDamageEffects()
-
 -- ============================================
 -- INTERFACE RAYFIELD
 -- ============================================
 
 local function CreateUI()
     Window = Rayfield:CreateWindow({
-        Name = "⚡ ComandoGame Mobile",
-        LoadingTitle = "ComandoGame",
-        LoadingSubtitle = "by Mk_gaming",
+        Name = "⚡ ComandoGame Mobile LITE",
+        LoadingTitle = "ComandoGame LITE",
+        LoadingSubtitle = "Para celular fraco",
         Theme = "Dark",
         ConfigurationSaving = { Enabled = false },
     })
@@ -1435,45 +1355,93 @@ local function CreateUI()
     
     local PerformanceTab = Window:CreateTab("⚡ Performance", 4483362458)
     
-    PerformanceTab:CreateSection("🚀 Ultra Desempenho SEGURO")
+    -- STUTTER FIXER (o principal)
+    PerformanceTab:CreateSection("🔧 Stutter Fixer (Anti-Travamento)")
     
     PerformanceTab:CreateToggle({
-        Name = "⚡ Ativar Ultra Desempenho SEGURO",
+        Name = "🔧 Ativar Stutter Fixer",
         CurrentValue = false,
         Callback = function(v)
-            Settings.UltraPerformance.Enabled = v
+            Settings.StutterFixer.Enabled = v
             if v then
-                ApplyUltraPerformance()
-                Rayfield:Notify({Title = "Ultra SEGURO", Content = "🚀 ATIVADO! Sem travamento!", Duration = 3})
+                StartStutterFixer()
+                Rayfield:Notify({Title = "Stutter Fixer", Content = "🔧 Iniciando... (não trava)", Duration = 3})
             else
-                RemoveUltraPerformance()
-                Rayfield:Notify({Title = "Ultra SEGURO", Content = "⏹️ DESATIVADO", Duration = 3})
+                StopStutterFixer()
+                Rayfield:Notify({Title = "Stutter Fixer", Content = "⏹️ PARADO", Duration = 2})
             end
         end
     })
     
-    PerformanceTab:CreateSection("🎨 Gráficos (seguro)")
+    PerformanceTab:CreateSlider({
+        Name = "Aguardar antes de otimizar",
+        Range = {2, 15},
+        Increment = 1,
+        Suffix = "s",
+        CurrentValue = 5,
+        Callback = function(v) Settings.StutterFixer.WaitForLoadTime = v end
+    })
     
-    PerformanceTab:CreateToggle({Name = "Remover Texturas", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveTextures = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Sombras", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveShadows = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Partículas", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveParticles = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Sons", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveSounds = v end})
-    PerformanceTab:CreateToggle({Name = "Reduzir Qualidade de Malhas", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveMeshesHighRes = v end})
+    PerformanceTab:CreateSlider({
+        Name = "Objetos por lote",
+        Range = {10, 50},
+        Increment = 5,
+        Suffix = "objetos",
+        CurrentValue = 30,
+        Callback = function(v) Settings.StutterFixer.RemovePerBatch = v end
+    })
     
-    PerformanceTab:CreateLabel("")
-    PerformanceTab:CreateLabel("🛡️ SEGURO:")
-    PerformanceTab:CreateLabel("• NÃO remove Atmosphere")
-    PerformanceTab:CreateLabel("• NÃO remove Sky")
-    PerformanceTab:CreateLabel("• NÃO remove Terrain")
-    PerformanceTab:CreateLabel("• NÃO remove chão/cenário")
-    PerformanceTab:CreateLabel("• NÃO trava o jogo")
-    PerformanceTab:CreateLabel("• Qualidade nível 4 (não 1)")
+    PerformanceTab:CreateLabel("✅ Remove objetos em LOTES")
+    PerformanceTab:CreateLabel("✅ Não trava durante o processo")
+    PerformanceTab:CreateLabel("✅ Espera o jogo carregar primeiro")
     
-    -- ===== MEMORY OPTIMIZER =====
-    PerformanceTab:CreateSection("🧠 Memory Optimizer PRO")
+    -- LOW END DEVICE
+    PerformanceTab:CreateSection("📱 Low End Device (Celular Fraco)")
     
     PerformanceTab:CreateToggle({
-        Name = "Memory Optimizer PRO",
+        Name = "📱 Modo Celular Fraco",
+        CurrentValue = false,
+        Callback = function(v)
+            Settings.LowEndDevice.Enabled = v
+            if v then
+                ApplyLowEndDevice()
+                Rayfield:Notify({Title = "Low End", Content = "📱 ATIVADO!", Duration = 3})
+            else
+                RemoveLowEndDevice()
+                Rayfield:Notify({Title = "Low End", Content = "⏹️ DESATIVADO", Duration = 3})
+            end
+        end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Reduzir Resolução",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.ReduceResolution = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Iluminação Simples",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.SimpleLighting = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Sem Sombras",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.DisableShadows = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Reduzir Física",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.ReducePhysics = v end
+    })
+    
+    -- MEMORY OPTIMIZER
+    PerformanceTab:CreateSection("🧠 Memory Optimizer")
+    
+    PerformanceTab:CreateToggle({
+        Name = "Memory Optimizer",
         CurrentValue = false,
         Callback = function(v)
             Settings.MemoryOptimizer.Enabled = v
@@ -1485,51 +1453,58 @@ local function CreateUI()
         end
     })
     
-    PerformanceTab:CreateToggle({Name = "Intervalo Adaptativo", CurrentValue = true, Callback = function(v) Settings.MemoryOptimizer.AdaptiveInterval = v end})
-    PerformanceTab:CreateSlider({Name = "Intervalo Mínimo", Range = {10, 60}, Increment = 5, Suffix = "s", CurrentValue = 20, Callback = function(v) Settings.MemoryOptimizer.MinInterval = v end})
-    PerformanceTab:CreateSlider({Name = "RAM Máxima", Range = {1000, 3000}, Increment = 100, Suffix = "MB", CurrentValue = 1800, Callback = function(v) Settings.MemoryOptimizer.MaxMemoryMB = v end})
+    PerformanceTab:CreateSlider({
+        Name = "RAM Máxima",
+        Range = {1000, 2500},
+        Increment = 100,
+        Suffix = "MB",
+        CurrentValue = 1500,
+        Callback = function(v) Settings.MemoryOptimizer.MaxMemoryMB = v end
+    })
     
-    -- ===== OTIMIZADOR INTERNET =====
+    -- OTIMIZADOR INTERNET
     PerformanceTab:CreateSection("🌐 Otimizador de Internet")
     
     PerformanceTab:CreateToggle({
-        Name = "🌐 Otimizar Internet/Ping",
+        Name = "🌐 Otimizar Internet",
         CurrentValue = false,
         Callback = function(v)
             Settings.NetworkOptimizer.Enabled = v
             if v then
                 Settings.NetworkOptimizer.LastOptimize = 0
                 StartNetworkOptimizer()
-                Rayfield:Notify({Title = "🌐 Otimizador", Content = "🚀 ATIVADO!", Duration = 3})
+                Rayfield:Notify({Title = "Otimizador", Content = "🌐 ATIVADO!", Duration = 3})
             end
         end
     })
     
-    PerformanceTab:CreateSlider({Name = "Intervalo", Range = {1, 10}, Increment = 1, Suffix = "s", CurrentValue = 3, Callback = function(v) Settings.NetworkOptimizer.Interval = v end})
-    
-    -- ===== ESTATÍSTICAS =====
+    -- ESTATÍSTICAS
     PerformanceTab:CreateSection("📊 Estatísticas")
     
     local fpsLabel = PerformanceTab:CreateLabel("📊 FPS: 60")
     local memCurrentLabel = PerformanceTab:CreateLabel("💾 RAM: 0 MB")
     local pLabel = PerformanceTab:CreateLabel("📡 Ping: 0 ms")
+    local removedLabel = PerformanceTab:CreateLabel("🔧 Removidos: 0")
     
     spawn(function()
         while wait(1) do
             if fpsLabel then
                 local fps = FPSMonitor.CurrentFPS
-                local color = fps >= 50 and "✅" or fps >= 30 and "⚠️" or "🚨"
+                local color = fps >= 45 and "✅" or fps >= 30 and "⚠️" or "🚨"
                 fpsLabel:Set(color .. " FPS: " .. fps)
             end
             if memCurrentLabel then
                 local mem = GetMemoryMB()
-                local color = mem < 1000 and "✅" or mem < 1800 and "⚠️" or "🚨"
+                local color = mem < 1000 and "✅" or mem < 1500 and "⚠️" or "🚨"
                 memCurrentLabel:Set(color .. " RAM: " .. mem .. " MB")
             end
             if pLabel then
                 local ping = GetPing()
                 local color = ping < 100 and "✅" or ping < 200 and "⚠️" or "🚨"
                 pLabel:Set(color .. " Ping: " .. ping .. " ms")
+            end
+            if removedLabel then
+                removedLabel:Set("🔧 Removidos: " .. Settings.StutterFixer.TotalRemoved)
             end
         end
     end)
@@ -1624,7 +1599,6 @@ local function CreateUI()
         Settings.FlyPlayer.Enabled = v
         if v then StartFlyPlayer() else StopFlyPlayer() end
     end})
-    MoveTab:CreateToggle({Name = "Anti-Reset Fly", CurrentValue = true, Callback = function(v) Settings.FlyPlayer.AntiReset = v end})
     MoveTab:CreateToggle({Name = "Anti-Fall", CurrentValue = true, Callback = function(v) Settings.FlyPlayer.AntiFall = v end})
     MoveTab:CreateSlider({Name = "Altura no Ar", Range = {5, 100}, Increment = 5, Suffix = "studs", CurrentValue = 10, Callback = function(v)
         Settings.FlyPlayer.Height = v
@@ -1670,36 +1644,44 @@ local function CreateUI()
     -- ============================================
     
     local AboutTab = Window:CreateTab("ℹ️ Sobre", 4483362458)
-    AboutTab:CreateLabel("⚡ ComandoGame Mobile v31.0")
+    AboutTab:CreateLabel("⚡ ComandoGame Mobile LITE v32.0")
     AboutTab:CreateLabel("👤 Criador: Mk_gaming")
+    AboutTab:CreateLabel("📱 Para Celular Fraco (Redmi 13C)")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("🛡️ v31.0 - SEGURO:")
-    AboutTab:CreateLabel("✅ NÃO trava o jogo")
-    AboutTab:CreateLabel("✅ NÃO buga a tela")
-    AboutTab:CreateLabel("✅ NÃO remove Atmosphere")
-    AboutTab:CreateLabel("✅ NÃO remove Sky")
-    AboutTab:CreateLabel("✅ NÃO remove Terrain")
-    AboutTab:CreateLabel("✅ NÃO remove chão/cenário")
+    AboutTab:CreateLabel("🆕 STUTTER FIXER:")
+    AboutTab:CreateLabel("• Remove objetos em LOTES")
+    AboutTab:CreateLabel("• Não trava durante o processo")
+    AboutTab:CreateLabel("• Espera o jogo carregar")
+    AboutTab:CreateLabel("• Processa 30 objetos por vez")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("🎯 Ainda remove:")
-    AboutTab:CreateLabel("• Texturas pesadas")
-    AboutTab:CreateLabel("• Sombras")
-    AboutTab:CreateLabel("• Partículas")
-    AboutTab:CreateLabel("• Sun Rays / DOF")
-    AboutTab:CreateLabel("• Qualidade de malhas")
+    AboutTab:CreateLabel("📱 LOW END DEVICE:")
+    AboutTab:CreateLabel("• Reduz resolução")
+    AboutTab:CreateLabel("• Iluminação simples")
+    AboutTab:CreateLabel("• Sem sombras")
+    AboutTab:CreateLabel("• Reduz física")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("💡 Se travar, DESATIVE o Ultra")
+    AboutTab:CreateLabel("💡 ORDEM DE ATIVAÇÃO:")
+    AboutTab:CreateLabel("1. Stutter Fixer (espera 5s)")
+    AboutTab:CreateLabel("2. Memory Optimizer")
+    AboutTab:CreateLabel("3. Low End Device")
+    AboutTab:CreateLabel("4. Otimizador de Internet")
 end
 
 CreateUI()
 
 Rayfield:Notify({
-    Title = "ComandoGame Mobile",
-    Content = "⚡ v31.0 - ULTRA SEGURO! Sem travamento!",
+    Title = "ComandoGame LITE",
+    Content = "⚡ v32.0 - Para celular fraco!",
     Duration = 5,
 })
 
-print("✅ ComandoGame Mobile v31.0 carregado!")
-print("🛡️ ULTRA DESEMPENHO SEGURO!")
-print("❌ NÃO remove Atmosphere/Sky/Terrain")
-print("✅ Não trava o jogo")
+print("✅ ComandoGame Mobile LITE v32.0 carregado!")
+print("📱 OTIMIZADO PARA REDMI 13C!")
+print("🔧 Stutter Fixer - remove em lotes")
+print("📱 Low End Device - reduz carga")
+print("")
+print("💡 ORDEM RECOMENDADA:")
+print("1. Stutter Fixer (ON)")
+print("2. Memory Optimizer (ON)")
+print("3. Low End Device (ON)")
+print("4. Otimizador Internet (ON)")
