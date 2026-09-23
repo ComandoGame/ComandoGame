@@ -1,8 +1,8 @@
 --[[
     COMANDOGAME - MOBILE EDITION
-    Versão: 30.1.0
+    Versão: 31.0.0
     Criador: Mk_gaming
-    ULTRA DESEMPENHO TURBO - CORRIGIDO (não remove chão)
+    ULTRA DESEMPENHO SEGURO - Não trava, não buga
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -16,8 +16,14 @@ local Lighting = game:GetService("Lighting")
 local Stats = game:GetService("Stats")
 
 -- ============================================
--- LISTA DE OBJETOS PROTEGIDOS (NUNCA REMOVER)
+-- LISTA DE PROTEÇÃO (NUNCA REMOVER)
 -- ============================================
+
+local PROTECTED_CLASSES = {
+    "Terrain",
+    "Atmosphere",
+    "Sky",
+}
 
 local PROTECTED_NAMES = {
     "ground", "floor", "terrain", "baseplate", "island", "land",
@@ -25,15 +31,24 @@ local PROTECTED_NAMES = {
     "sea", "ocean", "water", "shore", "beach", "cliff",
     "rock", "stone", "mountain", "hill", "sand", "dirt",
     "brick", "part", "block", "wall", "house", "building",
-    "tree", "bush", "grass", "plant",
+    "tree", "bush", "grass", "plant", "spawn", "portal",
+    "chest", "fruit", "sword", "gun", "shop", "npc",
 }
 
 local function IsProtected(obj)
     if not obj or not obj.Name then return false end
-    local name = obj.Name:lower()
-    for _, protected in pairs(PROTECTED_NAMES) do
-        if name:find(protected) then return true end
+    
+    -- Protege por classe
+    for _, className in pairs(PROTECTED_CLASSES) do
+        if obj.ClassName == className then return true end
     end
+    
+    -- Protege por nome
+    local name = obj.Name:lower()
+    for _, protectedName in pairs(PROTECTED_NAMES) do
+        if name:find(protectedName) then return true end
+    end
+    
     return false
 end
 
@@ -63,36 +78,19 @@ local Settings = {
         RemoveTextures = true,
         RemoveShadows = true,
         RemoveParticles = true,
-        RemoveDecorations = true,
-        RemoveSky = true,
-        RemoveAtmosphere = true,
         RemoveSounds = true,
-        RemoveMeshes = true,
-        RemoveBillboards = false,
+        RemoveMeshesHighRes = true,
         LowQuality = true,
-        RemoveFog = true,
-        RemoveSunRays = true,
-        RemoveDepthOfField = true,
-        RemovePostEffects = true,
-        RemoveTexturesHighRes = true,
-        RemoveSmallDecos = true,  -- CORRIGIDO (só decorações minúsculas)
-        DisableReflections = true,
-        DisableHighQualityMeshes = true,
-        ForceLowGraphics = true,
-        ForceLowMeshDetail = true,
-        -- REMOVIDO: ReduceRenderDistance, RemoveUnnecessaryParts, RemoveTransparentParts
         KeepColorCorrection = true,
         KeepBloom = true,
         KeepBlur = true,
-        KeepDamageEffects = true,
     },
     MemoryOptimizer = {
         Enabled = false,
         SmoothGC = true, AdaptiveInterval = true,
         MinInterval = 15, MaxInterval = 60,
         MaxMemoryMB = 1800, CriticalMemoryMB = 2200,
-        CleanDistantMeshes = true, CleanInvisibleParts = false,  -- CORRIGIDO
-        CleanOldParticles = true, CleanUnusedSounds = true,
+        CleanDistantMeshes = true, CleanOldParticles = true,
         LastClean = 0, TotalCleans = 0, MemorySaved = 0, CurrentMemory = 0,
     },
     NetworkOptimizer = {
@@ -102,8 +100,7 @@ local Settings = {
         ClearNetworkCache = true,
         LastOptimize = 0, TotalOptimizations = 0,
         PingHistory = {}, AvgPing = 0, MinPing = 9999, MaxPing = 0, LastPing = 0,
-        BoostBandwidth = true, ReducePacketLoss = true,
-        JitterCompensation = true, LowLatencyMode = true,
+        BoostBandwidth = true, JitterCompensation = true, LowLatencyMode = true,
     },
 }
 
@@ -131,12 +128,10 @@ local CentHubLoaded = false
 local FlyOriginalNoclip = false
 
 local FPSMonitor = { Frames = 0, LastUpdate = tick(), CurrentFPS = 60 }
-local MemoryStats = { LastMemory = 0, CleanCount = 0, TotalSaved = 0 }
 
 local PerformanceBackup = {
     Lighting = {}, RemovedObjects = {}, OriginalParent = {},
-    OriginalProperties = {}, TerrainBackup = nil, IsActive = false,
-    KeptEffects = {}, CameraOriginal = {},
+    OriginalProperties = {}, IsActive = false, KeptEffects = {},
 }
 
 -- ============================================
@@ -165,14 +160,12 @@ local function GetMemoryMB()
 end
 
 -- ============================================
--- MEMORY OPTIMIZER PRO
+-- MEMORY OPTIMIZER (LEVE)
 -- ============================================
 
 local function SmoothGarbageCollect()
     spawn(function()
         pcall(function()
-            collectgarbage("collect")
-            task.wait()
             collectgarbage("collect")
             task.wait()
             collectgarbage("collect")
@@ -200,15 +193,12 @@ local function SmartClean()
                             if dist > 500 and obj.TextureID ~= "" then obj.TextureID = "" end
                         end
                         count = count + 1
-                        if count % 20 == 0 then task.wait() end
+                        if count % 30 == 0 then task.wait() end
                     end
                 end)
             end)
         end
     end
-    
-    -- NÃO limpa parts invisíveis (era o que removia o chão)
-    -- if Settings.MemoryOptimizer.CleanInvisibleParts then ... end
     
     if Settings.MemoryOptimizer.CleanOldParticles then
         spawn(function()
@@ -219,7 +209,7 @@ local function SmartClean()
                         obj:Clear()
                     end
                     count = count + 1
-                    if count % 30 == 0 then task.wait() end
+                    if count % 40 == 0 then task.wait() end
                 end
             end)
         end)
@@ -262,7 +252,7 @@ end
 local function StartMemoryOptimizer()
     spawn(function()
         while Settings.MemoryOptimizer.Enabled do
-            wait(2)
+            wait(3)
             pcall(CheckMemory)
         end
     end)
@@ -341,7 +331,7 @@ local function StartNetworkOptimizer()
 end
 
 -- ============================================
--- ULTRA DESEMPENHO TURBO - CORRIGIDO
+-- ULTRA DESEMPENHO SEGURO (SEM TRAVAR)
 -- ============================================
 
 local function ApplyUltraPerformance()
@@ -351,69 +341,55 @@ local function ApplyUltraPerformance()
     PerformanceBackup.OriginalParent = {}
     PerformanceBackup.OriginalProperties = {}
     PerformanceBackup.KeptEffects = {}
-    PerformanceBackup.CameraOriginal = {}
     
-    print("🚀 Aplicando Ultra Desempenho TURBO (seguro)...")
+    print("🚀 Aplicando Ultra Desempenho SEGURO...")
     
     -- ============================================
-    -- 1. LIGHTING
+    -- 1. LIGHTING (só sombras e brilho)
     -- ============================================
     pcall(function()
         PerformanceBackup.Lighting = {
             GlobalShadows = Lighting.GlobalShadows,
             Brightness = Lighting.Brightness,
-            Ambient = Lighting.Ambient,
-            OutdoorAmbient = Lighting.OutdoorAmbient,
-            FogEnd = Lighting.FogEnd, FogStart = Lighting.FogStart,
-            FogColor = Lighting.FogColor, ShadowSoftness = Lighting.ShadowSoftness,
-            EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
-            EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale,
-            ExposureCompensation = Lighting.ExposureCompensation,
+            ShadowSoftness = Lighting.ShadowSoftness,
         }
         Lighting.GlobalShadows = false
-        Lighting.Brightness = 0
-        Lighting.Ambient = Color3.fromRGB(200, 200, 200)
-        Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
-        Lighting.FogEnd = 100000
-        Lighting.FogStart = 0
+        Lighting.Brightness = 1
         Lighting.ShadowSoftness = 0
-        Lighting.EnvironmentDiffuseScale = 0
-        Lighting.EnvironmentSpecularScale = 0
-        Lighting.ExposureCompensation = 0
     end)
     
     -- ============================================
-    -- 2. REMOVER EFEITOS (com proteção)
+    -- 2. REMOVER APENAS EFEITOS PESADOS (com proteção)
     -- ============================================
     pcall(function()
         for _, child in pairs(Lighting:GetChildren()) do
             local shouldRemove = false
             local className = child.ClassName
             
-            if className == "Atmosphere" and Settings.UltraPerformance.RemoveAtmosphere then
+            -- ⚠️ NUNCA remover Atmosphere ou Sky (causa travamento!)
+            -- Remover APENAS SunRaysEffect e DepthOfFieldEffect
+            if className == "SunRaysEffect" then
                 shouldRemove = true
             end
-            if className == "Sky" and Settings.UltraPerformance.RemoveSky then
-                shouldRemove = true
-            end
-            if className == "SunRaysEffect" and Settings.UltraPerformance.RemoveSunRays then
-                shouldRemove = true
-            end
-            if className == "DepthOfFieldEffect" and Settings.UltraPerformance.RemoveDepthOfField then
+            if className == "DepthOfFieldEffect" then
                 shouldRemove = true
             end
             
             -- MANTER efeitos de dano
-            if className == "ColorCorrectionEffect" and Settings.UltraPerformance.KeepColorCorrection then
-                table.insert(PerformanceBackup.KeptEffects, child)
+            if className == "ColorCorrectionEffect" then
                 shouldRemove = false
-            end
-            if className == "BloomEffect" and Settings.UltraPerformance.KeepBloom then
                 table.insert(PerformanceBackup.KeptEffects, child)
+            end
+            if className == "BloomEffect" then
                 shouldRemove = false
-            end
-            if className == "BlurEffect" and Settings.UltraPerformance.KeepBlur then
                 table.insert(PerformanceBackup.KeptEffects, child)
+            end
+            if className == "BlurEffect" then
+                shouldRemove = false
+                table.insert(PerformanceBackup.KeptEffects, child)
+            end
+            -- ⚠️ MANTER Atmosphere e Sky
+            if className == "Atmosphere" or className == "Sky" then
                 shouldRemove = false
             end
             
@@ -426,17 +402,16 @@ local function ApplyUltraPerformance()
     end)
     
     -- ============================================
-    -- 3. WORKSPACE (SÓ O QUE É SEGURO)
+    -- 3. WORKSPACE (SÓ O QUE É 100% SEGURO)
     -- ============================================
     pcall(function()
         for _, obj in pairs(workspace:GetDescendants()) do
             local isLocalChar = LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character)
-            local isProtected = IsProtected(obj)  -- ⚠️ PROTEGIDO!
+            local isProtected = IsProtected(obj)
             
-            -- PULA TUDO QUE É PROTEGIDO
             if not isProtected and not isLocalChar then
                 
-                -- TEXTURAS
+                -- TEXTURAS (só de objetos que não são importantes)
                 if Settings.UltraPerformance.RemoveTextures then
                     if obj:IsA("Decal") or obj:IsA("Texture") then
                         if obj.Texture ~= "" then
@@ -446,7 +421,7 @@ local function ApplyUltraPerformance()
                     end
                 end
                 
-                -- PARTÍCULAS
+                -- PARTÍCULAS (só as decorativas)
                 if Settings.UltraPerformance.RemoveParticles then
                     if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or 
                        obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
@@ -457,7 +432,7 @@ local function ApplyUltraPerformance()
                     end
                 end
                 
-                -- SONS
+                -- SONS (só fora do personagem)
                 if Settings.UltraPerformance.RemoveSounds then
                     if obj:IsA("Sound") then
                         if obj.Volume > 0 then
@@ -467,33 +442,10 @@ local function ApplyUltraPerformance()
                     end
                 end
                 
-                -- MESHES DE ALTA QUALIDADE (só reduz qualidade, não remove)
-                if Settings.UltraPerformance.RemoveMeshes then
+                -- MESHES (só reduz qualidade, NÃO remove)
+                if Settings.UltraPerformance.RemoveMeshesHighRes then
                     if obj:IsA("MeshPart") then
-                        if obj.RenderFidelity ~= Enum.RenderFidelity.Performance then
-                            obj.RenderFidelity = Enum.RenderFidelity.Performance
-                        end
-                    end
-                end
-                
-                -- BILLBOARDS (só os muito distantes)
-                if Settings.UltraPerformance.RemoveBillboards then
-                    if obj:IsA("BillboardGui") and obj.Name ~= "ComandoGameESP" then
-                        obj.Enabled = false
-                    end
-                end
-                
-                -- DECORAÇÕES MINÚSCULAS (só muito pequenas < 0.3)
-                if Settings.UltraPerformance.RemoveSmallDecos then
-                    if obj:IsA("BasePart") then
-                        local size = obj.Size
-                        -- Só remove se for MUITO pequena e não protegida
-                        if size.X < 0.3 and size.Y < 0.3 and size.Z < 0.3 then
-                            if not IsProtected(obj) then
-                                obj.Transparency = 1
-                                obj.CanCollide = false
-                            end
-                        end
+                        obj.RenderFidelity = Enum.RenderFidelity.Performance
                     end
                 end
             end
@@ -501,39 +453,13 @@ local function ApplyUltraPerformance()
     end)
     
     -- ============================================
-    -- 4. TERRAIN (só reduz qualidade, NÃO remove)
+    -- 4. QUALIDADE GRÁFICA (só nível 4, não 1)
     -- ============================================
     pcall(function()
-        local terrain = workspace:FindFirstChildOfClass("Terrain")
-        if terrain then
-            PerformanceBackup.TerrainBackup = {
-                WaterWaveSize = terrain.WaterWaveSize,
-                WaterWaveSpeed = terrain.WaterWaveSpeed,
-                WaterReflectance = terrain.WaterReflectance,
-                WaterTransparency = terrain.WaterTransparency,
-                Decoration = terrain.Decoration,
-            }
-            terrain.WaterWaveSize = 0
-            terrain.WaterWaveSpeed = 0
-            terrain.WaterReflectance = 0
-            terrain.WaterTransparency = 0.7  -- NÃO FICA INVISÍVEL
-            terrain.Decoration = false  -- Só remove detalhes de grama
-        end
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level04
     end)
     
-    -- ============================================
-    -- 5. QUALIDADE GRÁFICA
-    -- ============================================
-    pcall(function()
-        if Settings.UltraPerformance.ForceLowGraphics then
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-        end
-        if Settings.UltraPerformance.ForceLowMeshDetail then
-            settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
-        end
-    end)
-    
-    print("✅ Ultra Desempenho TURBO ATIVADO (seguro)!")
+    print("✅ Ultra Desempenho SEGURO ATIVADO!")
 end
 
 local function RemoveUltraPerformance()
@@ -573,36 +499,26 @@ local function RemoveUltraPerformance()
     end)
     
     pcall(function()
-        if PerformanceBackup.TerrainBackup then
-            local terrain = workspace:FindFirstChildOfClass("Terrain")
-            if terrain then
-                for prop, value in pairs(PerformanceBackup.TerrainBackup) do
-                    terrain[prop] = value
-                end
-            end
-        end
-    end)
-    
-    pcall(function()
         settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
-        settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Automatic
     end)
     
     PerformanceBackup.IsActive = false
     PerformanceBackup.RemovedObjects = {}
     PerformanceBackup.OriginalParent = {}
     PerformanceBackup.OriginalProperties = {}
-    PerformanceBackup.TerrainBackup = nil
     PerformanceBackup.KeptEffects = {}
-    PerformanceBackup.CameraOriginal = {}
     
     print("❌ Ultra Desempenho DESATIVADO")
 end
 
+-- ============================================
+-- PROTEÇÃO CONTRA BUG DE COR
+-- ============================================
+
 local function ProtectDamageEffects()
     spawn(function()
         while true do
-            wait(2)
+            wait(3)
             if Settings.UltraPerformance.Enabled then
                 pcall(function()
                     local hasCC = false
@@ -1519,80 +1435,39 @@ local function CreateUI()
     
     local PerformanceTab = Window:CreateTab("⚡ Performance", 4483362458)
     
-    PerformanceTab:CreateSection("🚀 Ultra Desempenho TURBO")
+    PerformanceTab:CreateSection("🚀 Ultra Desempenho SEGURO")
     
     PerformanceTab:CreateToggle({
-        Name = "⚡ Ativar Ultra Desempenho TURBO",
+        Name = "⚡ Ativar Ultra Desempenho SEGURO",
         CurrentValue = false,
         Callback = function(v)
             Settings.UltraPerformance.Enabled = v
             if v then
                 ApplyUltraPerformance()
-                Rayfield:Notify({Title = "Ultra TURBO", Content = "🚀 ATIVADO! Chão preservado!", Duration = 3})
+                Rayfield:Notify({Title = "Ultra SEGURO", Content = "🚀 ATIVADO! Sem travamento!", Duration = 3})
             else
                 RemoveUltraPerformance()
-                Rayfield:Notify({Title = "Ultra TURBO", Content = "⏹️ DESATIVADO", Duration = 3})
+                Rayfield:Notify({Title = "Ultra SEGURO", Content = "⏹️ DESATIVADO", Duration = 3})
             end
         end
     })
     
-    PerformanceTab:CreateSection("🎨 Remover Gráficos Pesados")
+    PerformanceTab:CreateSection("🎨 Gráficos (seguro)")
     
     PerformanceTab:CreateToggle({Name = "Remover Texturas", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveTextures = v end})
     PerformanceTab:CreateToggle({Name = "Remover Sombras", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveShadows = v end})
     PerformanceTab:CreateToggle({Name = "Remover Partículas", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveParticles = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Sky (Céu)", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveSky = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Atmosphere", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveAtmosphere = v end})
     PerformanceTab:CreateToggle({Name = "Remover Sons", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveSounds = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Meshes Alta Res", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveMeshes = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Fog (Névoa)", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveFog = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Sun Rays", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveSunRays = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Depth of Field", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveDepthOfField = v end})
-    
-    PerformanceTab:CreateSection("🔧 Otimizações Seguras")
-    
-    PerformanceTab:CreateToggle({
-        Name = "Remover Decorações Minúsculas",
-        CurrentValue = true,
-        Callback = function(v) Settings.UltraPerformance.RemoveSmallDecos = v end
-    })
-    
-    PerformanceTab:CreateToggle({
-        Name = "Forçar Gráficos Mínimos",
-        CurrentValue = true,
-        Callback = function(v) Settings.UltraPerformance.ForceLowGraphics = v end
-    })
-    
-    PerformanceTab:CreateToggle({
-        Name = "Forçar Mesh Detail Mínimo",
-        CurrentValue = true,
-        Callback = function(v) Settings.UltraPerformance.ForceLowMeshDetail = v end
-    })
-    
-    PerformanceTab:CreateSection("🛡️ Proteção de Efeitos")
-    
-    PerformanceTab:CreateToggle({
-        Name = "Manter ColorCorrection (Dano)",
-        CurrentValue = true,
-        Callback = function(v) Settings.UltraPerformance.KeepColorCorrection = v end
-    })
-    
-    PerformanceTab:CreateToggle({
-        Name = "Manter Bloom",
-        CurrentValue = true,
-        Callback = function(v) Settings.UltraPerformance.KeepBloom = v end
-    })
-    
-    PerformanceTab:CreateToggle({
-        Name = "Manter Blur",
-        CurrentValue = true,
-        Callback = function(v) Settings.UltraPerformance.KeepBlur = v end
-    })
+    PerformanceTab:CreateToggle({Name = "Reduzir Qualidade de Malhas", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveMeshesHighRes = v end})
     
     PerformanceTab:CreateLabel("")
-    PerformanceTab:CreateLabel("✅ Chão, terreno e cenário são SEMPRE preservados")
-    PerformanceTab:CreateLabel("✅ Só remove decorações minúsculas (<0.3)")
-    PerformanceTab:CreateLabel("✅ Mantém tudo que você precisa ver")
+    PerformanceTab:CreateLabel("🛡️ SEGURO:")
+    PerformanceTab:CreateLabel("• NÃO remove Atmosphere")
+    PerformanceTab:CreateLabel("• NÃO remove Sky")
+    PerformanceTab:CreateLabel("• NÃO remove Terrain")
+    PerformanceTab:CreateLabel("• NÃO remove chão/cenário")
+    PerformanceTab:CreateLabel("• NÃO trava o jogo")
+    PerformanceTab:CreateLabel("• Qualidade nível 4 (não 1)")
     
     -- ===== MEMORY OPTIMIZER =====
     PerformanceTab:CreateSection("🧠 Memory Optimizer PRO")
@@ -1611,7 +1486,7 @@ local function CreateUI()
     })
     
     PerformanceTab:CreateToggle({Name = "Intervalo Adaptativo", CurrentValue = true, Callback = function(v) Settings.MemoryOptimizer.AdaptiveInterval = v end})
-    PerformanceTab:CreateSlider({Name = "Intervalo Mínimo", Range = {10, 60}, Increment = 5, Suffix = "s", CurrentValue = 15, Callback = function(v) Settings.MemoryOptimizer.MinInterval = v end})
+    PerformanceTab:CreateSlider({Name = "Intervalo Mínimo", Range = {10, 60}, Increment = 5, Suffix = "s", CurrentValue = 20, Callback = function(v) Settings.MemoryOptimizer.MinInterval = v end})
     PerformanceTab:CreateSlider({Name = "RAM Máxima", Range = {1000, 3000}, Increment = 100, Suffix = "MB", CurrentValue = 1800, Callback = function(v) Settings.MemoryOptimizer.MaxMemoryMB = v end})
     
     -- ===== OTIMIZADOR INTERNET =====
@@ -1630,7 +1505,7 @@ local function CreateUI()
         end
     })
     
-    PerformanceTab:CreateSlider({Name = "Intervalo", Range = {1, 10}, Increment = 1, Suffix = "s", CurrentValue = 2, Callback = function(v) Settings.NetworkOptimizer.Interval = v end})
+    PerformanceTab:CreateSlider({Name = "Intervalo", Range = {1, 10}, Increment = 1, Suffix = "s", CurrentValue = 3, Callback = function(v) Settings.NetworkOptimizer.Interval = v end})
     
     -- ===== ESTATÍSTICAS =====
     PerformanceTab:CreateSection("📊 Estatísticas")
@@ -1795,34 +1670,36 @@ local function CreateUI()
     -- ============================================
     
     local AboutTab = Window:CreateTab("ℹ️ Sobre", 4483362458)
-    AboutTab:CreateLabel("⚡ ComandoGame Mobile v30.1")
+    AboutTab:CreateLabel("⚡ ComandoGame Mobile v31.0")
     AboutTab:CreateLabel("👤 Criador: Mk_gaming")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("🛡️ v30.1 - CORREÇÃO:")
-    AboutTab:CreateLabel("✅ NÃO remove mais o chão")
-    AboutTab:CreateLabel("✅ NÃO remove mais o terreno")
-    AboutTab:CreateLabel("✅ NÃO remove ilhas/plataformas")
-    AboutTab:CreateLabel("✅ NÃO remove cenário principal")
-    AboutTab:CreateLabel("✅ Só remove decorações <0.3")
+    AboutTab:CreateLabel("🛡️ v31.0 - SEGURO:")
+    AboutTab:CreateLabel("✅ NÃO trava o jogo")
+    AboutTab:CreateLabel("✅ NÃO buga a tela")
+    AboutTab:CreateLabel("✅ NÃO remove Atmosphere")
+    AboutTab:CreateLabel("✅ NÃO remove Sky")
+    AboutTab:CreateLabel("✅ NÃO remove Terrain")
+    AboutTab:CreateLabel("✅ NÃO remove chão/cenário")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("🚀 Ainda remove:")
+    AboutTab:CreateLabel("🎯 Ainda remove:")
     AboutTab:CreateLabel("• Texturas pesadas")
     AboutTab:CreateLabel("• Sombras")
     AboutTab:CreateLabel("• Partículas")
-    AboutTab:CreateLabel("• Sky/Atmosphere")
-    AboutTab:CreateLabel("• Fog e Sun Rays")
+    AboutTab:CreateLabel("• Sun Rays / DOF")
+    AboutTab:CreateLabel("• Qualidade de malhas")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("🎯 Ganho de FPS mantido!")
+    AboutTab:CreateLabel("💡 Se travar, DESATIVE o Ultra")
 end
 
 CreateUI()
 
 Rayfield:Notify({
     Title = "ComandoGame Mobile",
-    Content = "⚡ v30.1 - Chão CORRIGIDO!",
+    Content = "⚡ v31.0 - ULTRA SEGURO! Sem travamento!",
     Duration = 5,
 })
 
-print("✅ ComandoGame Mobile v30.1 carregado!")
-print("🛡️ Chão e cenário PRESERVADOS!")
-print("🚀 Ganho de FPS mantido!")
+print("✅ ComandoGame Mobile v31.0 carregado!")
+print("🛡️ ULTRA DESEMPENHO SEGURO!")
+print("❌ NÃO remove Atmosphere/Sky/Terrain")
+print("✅ Não trava o jogo")
