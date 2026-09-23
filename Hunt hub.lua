@@ -1,9 +1,8 @@
 --[[
     COMANDOGAME - MOBILE EDITION
-    Versão: 29.0.0
+    Versão: 30.0.0
     Criador: Mk_gaming
-    FLY LIVRE - WASD + Câmera (PC) / Direcional (Mobile)
-    SEM Espaço e SEM Shift
+    ULTRA DESEMPENHO TURBO - Máximo de FPS
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -15,6 +14,7 @@ local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local Lighting = game:GetService("Lighting")
 local Stats = game:GetService("Stats")
+local Terrain = workspace:FindFirstChildOfClass("Terrain")
 
 -- ============================================
 -- CONFIGURAÇÕES
@@ -28,23 +28,58 @@ local Settings = {
     Noclip = { Enabled = false },
     Speed = { Enabled = false, Value = 300 },
     Jump = { Enabled = false, Value = 150 },
-    -- FLY LIVRE (SEM ESPAÇO/SHIFT)
     Fly = {
         Enabled = false,
-        Speed = 150,           -- Velocidade geral
+        Speed = 150,
         AntiReset = true,
         AutoRestart = true,
         AutoNoclip = true,
     },
     ESP = { Enabled = false, MaxDistance = 100000 },
     NoFog = { Enabled = false },
+    -- ULTRA DESEMPENHO TURBO
     UltraPerformance = {
         Enabled = false,
-        RemoveTextures = true, RemoveShadows = true, RemoveParticles = true,
-        RemoveDecorations = true, RemoveSky = true, RemoveTerrain = true,
-        RemoveSounds = true, RemoveMeshes = true, RemoveBillboards = false,
+        -- Gráficos
+        RemoveTextures = true,
+        RemoveShadows = true,
+        RemoveParticles = true,
+        RemoveDecorations = true,
+        RemoveSky = true,
+        RemoveAtmosphere = true,
+        RemoveTerrain = true,
+        RemoveWater = true,
+        RemoveSounds = true,
+        RemoveMeshes = true,
+        RemoveBillboards = false,
         LowQuality = true,
-        KeepColorCorrection = true, KeepBloom = true, KeepBlur = true, KeepDamageEffects = true,
+        -- NOVOS (TURBO)
+        RemoveFog = true,
+        RemoveSunRays = true,
+        RemoveBloom = false,
+        RemoveColorCorrection = false,
+        RemoveBlur = false,
+        RemoveDepthOfField = true,
+        RemovePostEffects = true,
+        RemoveTexturesHighRes = true,
+        RemoveUnnecessaryParts = true,
+        RemoveTransparentParts = true,
+        ReduceRenderDistance = true,
+        RenderDistanceValue = 300,
+        DisableReflections = true,
+        DisableWaterReflectance = true,
+        DisableHighQualityMeshes = true,
+        DisableAnimations = false,
+        DisableHumanoidSounds = true,
+        ForceLowGraphics = true,
+        ForceLowMeshDetail = true,
+        OptimizeCamera = true,
+        CameraFarPlane = 500,
+        -- Proteção
+        KeepColorCorrection = true,
+        KeepBloom = true,
+        KeepBlur = true,
+        KeepDamageEffects = true,
     },
     MemoryOptimizer = {
         Enabled = false,
@@ -96,7 +131,7 @@ local MemoryStats = { LastMemory = 0, CleanCount = 0, TotalSaved = 0 }
 local PerformanceBackup = {
     Lighting = {}, RemovedObjects = {}, OriginalParent = {},
     OriginalProperties = {}, TerrainBackup = nil, IsActive = false,
-    KeptEffects = {},
+    KeptEffects = {}, CameraOriginal = {},
 }
 
 -- ============================================
@@ -197,9 +232,7 @@ local function SmartClean()
         end)
     end
     
-    if Settings.MemoryOptimizer.SmoothGC then
-        SmoothGarbageCollect()
-    end
+    if Settings.MemoryOptimizer.SmoothGC then SmoothGarbageCollect() end
     
     task.wait(0.5)
     local memAfter = GetMemoryMB()
@@ -315,7 +348,7 @@ local function StartNetworkOptimizer()
 end
 
 -- ============================================
--- ULTRA DESEMPENHO
+-- ULTRA DESEMPENHO TURBO - NOVO
 -- ============================================
 
 local function ApplyUltraPerformance()
@@ -325,45 +358,74 @@ local function ApplyUltraPerformance()
     PerformanceBackup.OriginalParent = {}
     PerformanceBackup.OriginalProperties = {}
     PerformanceBackup.KeptEffects = {}
+    PerformanceBackup.CameraOriginal = {}
     
+    print("🚀 Aplicando Ultra Desempenho TURBO...")
+    
+    -- ============================================
+    -- 1. LIGHTING (o mais pesado)
+    -- ============================================
     pcall(function()
         PerformanceBackup.Lighting = {
-            GlobalShadows = Lighting.GlobalShadows, Brightness = Lighting.Brightness,
-            Ambient = Lighting.Ambient, OutdoorAmbient = Lighting.OutdoorAmbient,
+            GlobalShadows = Lighting.GlobalShadows,
+            Brightness = Lighting.Brightness,
+            Ambient = Lighting.Ambient,
+            OutdoorAmbient = Lighting.OutdoorAmbient,
             FogEnd = Lighting.FogEnd, FogStart = Lighting.FogStart,
             FogColor = Lighting.FogColor, ShadowSoftness = Lighting.ShadowSoftness,
+            Technology = Lighting.Technology,
+            EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
+            EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale,
+            ExposureCompensation = Lighting.ExposureCompensation,
         }
         Lighting.GlobalShadows = false
         Lighting.Brightness = 0
-        Lighting.Ambient = Color3.fromRGB(180, 180, 180)
-        Lighting.OutdoorAmbient = Color3.fromRGB(180, 180, 180)
+        Lighting.Ambient = Color3.fromRGB(200, 200, 200)
+        Lighting.OutdoorAmbient = Color3.fromRGB(200, 200, 200)
         Lighting.FogEnd = 100000
         Lighting.FogStart = 0
         Lighting.ShadowSoftness = 0
+        Lighting.EnvironmentDiffuseScale = 0
+        Lighting.EnvironmentSpecularScale = 0
+        Lighting.ExposureCompensation = 0
     end)
     
+    -- ============================================
+    -- 2. REMOVER EFEITOS (com proteção)
+    -- ============================================
     pcall(function()
         for _, child in pairs(Lighting:GetChildren()) do
             local shouldRemove = false
-            if child:IsA("Atmosphere") or child:IsA("Sky") or 
-               child:IsA("SunRaysEffect") or child:IsA("DepthOfFieldEffect") then
+            local className = child.ClassName
+            
+            -- Remover SEMPRE (não afeta visual de dano)
+            if className == "Atmosphere" and Settings.UltraPerformance.RemoveAtmosphere then
                 shouldRemove = true
             end
-            if child:IsA("BloomEffect") then
-                if Settings.UltraPerformance.KeepBloom then
-                    table.insert(PerformanceBackup.KeptEffects, child)
-                else shouldRemove = true end
+            if className == "Sky" and Settings.UltraPerformance.RemoveSky then
+                shouldRemove = true
             end
-            if child:IsA("ColorCorrectionEffect") then
-                if Settings.UltraPerformance.KeepColorCorrection then
-                    table.insert(PerformanceBackup.KeptEffects, child)
-                else shouldRemove = true end
+            if className == "SunRaysEffect" and Settings.UltraPerformance.RemoveSunRays then
+                shouldRemove = true
             end
-            if child:IsA("BlurEffect") then
-                if Settings.UltraPerformance.KeepBlur then
-                    table.insert(PerformanceBackup.KeptEffects, child)
-                else shouldRemove = true end
+            if className == "DepthOfFieldEffect" and Settings.UltraPerformance.RemoveDepthOfField then
+                shouldRemove = true
             end
+            
+            -- MANTER (efeitos de dano críticos)
+            if className == "ColorCorrectionEffect" and Settings.UltraPerformance.KeepColorCorrection then
+                table.insert(PerformanceBackup.KeptEffects, child)
+                shouldRemove = false
+            end
+            if className == "BloomEffect" and Settings.UltraPerformance.KeepBloom then
+                table.insert(PerformanceBackup.KeptEffects, child)
+                shouldRemove = false
+            end
+            if className == "BlurEffect" and Settings.UltraPerformance.KeepBlur then
+                table.insert(PerformanceBackup.KeptEffects, child)
+                shouldRemove = false
+            end
+            
             if shouldRemove then
                 PerformanceBackup.OriginalParent[child] = child.Parent
                 child.Parent = nil
@@ -372,56 +434,191 @@ local function ApplyUltraPerformance()
         end
     end)
     
+    -- ============================================
+    -- 3. WORKSPACE (TURBO)
+    -- ============================================
     pcall(function()
         for _, obj in pairs(workspace:GetDescendants()) do
             local isLocalChar = LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character)
+            
+            -- TEXTURAS (só fora do personagem)
             if Settings.UltraPerformance.RemoveTextures and not isLocalChar then
                 if obj:IsA("Decal") or obj:IsA("Texture") then
-                    PerformanceBackup.OriginalProperties[obj] = obj.Transparency
-                    obj.Transparency = 1
+                    if obj.Texture ~= "" then
+                        PerformanceBackup.OriginalProperties[obj] = obj.Texture
+                        obj.Texture = ""
+                    end
+                end
+                if obj:IsA("SurfaceAppearance") then
+                    obj.TexturePack = ""
                 end
             end
+            
+            -- PARTÍCULAS
             if Settings.UltraPerformance.RemoveParticles and not isLocalChar then
                 if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or 
                    obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
                     local n = obj.Name:lower()
-                    if not (n:match("damage") or n:match("hurt") or n:match("hit")) then
+                    if not (n:match("damage") or n:match("hurt") or n:match("hit") or n:match("blood")) then
                         obj.Enabled = false
                     end
                 end
             end
+            
+            -- SONS
             if Settings.UltraPerformance.RemoveSounds and not isLocalChar then
-                if obj:IsA("Sound") then obj.Volume = 0 end
+                if obj:IsA("Sound") then
+                    if obj.Volume > 0 then
+                        PerformanceBackup.OriginalProperties[obj] = obj.Volume
+                        obj.Volume = 0
+                    end
+                end
+            end
+            
+            -- MESHES DE ALTA QUALIDADE
+            if Settings.UltraPerformance.RemoveMeshes and not isLocalChar then
+                if obj:IsA("MeshPart") then
+                    if obj.RenderFidelity ~= Enum.RenderFidelity.Performance then
+                        obj.RenderFidelity = Enum.RenderFidelity.Performance
+                    end
+                end
+                if obj:IsA("SpecialMesh") then
+                    obj.Scale = Vector3.new(0.5, 0.5, 0.5)
+                end
+            end
+            
+            -- PARTS DESNECESSÁRIAS (decorativas)
+            if Settings.UltraPerformance.RemoveUnnecessaryParts and not isLocalChar then
+                if obj:IsA("BasePart") then
+                    -- Remover parts muito pequenas (decoração)
+                    local size = obj.Size
+                    if size.X < 0.5 and size.Y < 0.5 and size.Z < 0.5 then
+                        obj.Transparency = 1
+                        obj.CanCollide = false
+                    end
+                    -- Remover parts muito distantes
+                    if Settings.UltraPerformance.ReduceRenderDistance and LocalPlayer.Character then
+                        local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                        if rootPart then
+                            local dist = (obj.Position - rootPart.Position).Magnitude
+                            if dist > Settings.UltraPerformance.RenderDistanceValue then
+                                obj.Transparency = 1
+                                obj.CanCollide = false
+                            end
+                        end
+                    end
+                end
+            end
+            
+            -- PARTS TRANSPARENTES
+            if Settings.UltraPerformance.RemoveTransparentParts and not isLocalChar then
+                if obj:IsA("BasePart") and obj.Transparency >= 0.9 and obj.Transparency < 1 then
+                    obj.Transparency = 1
+                    obj.CanCollide = false
+                end
+            end
+            
+            -- BILLBOARDS/SURFACEGUI (opcional)
+            if Settings.UltraPerformance.RemoveBillboards and not isLocalChar then
+                if obj:IsA("SurfaceGui") or (obj:IsA("BillboardGui") and obj.Name ~= "ComandoGameESP") then
+                    obj.Enabled = false
+                end
+            end
+            
+            -- ANIMAÇÕES
+            if Settings.UltraPerformance.DisableAnimations and not isLocalChar then
+                if obj:IsA("Animation") then
+                    obj.AnimationId = ""
+                end
             end
         end
     end)
     
+    -- ============================================
+    -- 4. TERRAIN/ÁGUA (pesado)
+    -- ============================================
     pcall(function()
-        if Settings.UltraPerformance.RemoveTerrain then
-            local terrain = workspace:FindFirstChildOfClass("Terrain")
-            if terrain then
-                PerformanceBackup.TerrainBackup = {
-                    WaterWaveSize = terrain.WaterWaveSize, WaterWaveSpeed = terrain.WaterWaveSpeed,
-                    WaterReflectance = terrain.WaterReflectance,
-                    WaterTransparency = terrain.WaterTransparency, Decoration = terrain.Decoration,
-                }
-                terrain.WaterWaveSize = 0
-                terrain.WaterWaveSpeed = 0
-                terrain.WaterReflectance = 0
-                terrain.WaterTransparency = 1
-                terrain.Decoration = false
+        local terrain = workspace:FindFirstChildOfClass("Terrain")
+        if terrain and Settings.UltraPerformance.RemoveTerrain then
+            PerformanceBackup.TerrainBackup = {
+                WaterWaveSize = terrain.WaterWaveSize,
+                WaterWaveSpeed = terrain.WaterWaveSpeed,
+                WaterReflectance = terrain.WaterReflectance,
+                WaterTransparency = terrain.WaterTransparency,
+                Decoration = terrain.Decoration,
+            }
+            terrain.WaterWaveSize = 0
+            terrain.WaterWaveSpeed = 0
+            terrain.WaterReflectance = 0
+            terrain.WaterTransparency = 1
+            terrain.Decoration = false
+        end
+    end)
+    
+    -- ============================================
+    -- 5. CÂMERA (otimização)
+    -- ============================================
+    pcall(function()
+        if Settings.UltraPerformance.OptimizeCamera and workspace.CurrentCamera then
+            PerformanceBackup.CameraOriginal.FieldOfView = workspace.CurrentCamera.FieldOfView
+            PerformanceBackup.CameraOriginal.CFrame = workspace.CurrentCamera.CFrame
+        end
+    end)
+    
+    -- ============================================
+    -- 6. QUALIDADE GRÁFICA (máximo)
+    -- ============================================
+    pcall(function()
+        if Settings.UltraPerformance.ForceLowGraphics then
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        end
+        if Settings.UltraPerformance.ForceLowMeshDetail then
+            settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+        end
+        -- Remover reflexões
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+    end)
+    
+    -- ============================================
+    -- 7. REMOVER ATMOSFERA DE TODOS OS SERVIÇOS
+    -- ============================================
+    pcall(function()
+        for _, obj in pairs(game:GetDescendants()) do
+            if obj:IsA("Atmosphere") then
+                PerformanceBackup.OriginalParent[obj] = obj.Parent
+                obj.Parent = nil
+                table.insert(PerformanceBackup.RemovedObjects, obj)
             end
         end
     end)
     
-    pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Level01 end)
+    -- ============================================
+    -- 8. TEXTURAS DE ALTA RESOLUÇÃO
+    -- ============================================
+    pcall(function()
+        if Settings.UltraPerformance.RemoveTexturesHighRes then
+            for _, obj in pairs(game:GetDescendants()) do
+                if obj:IsA("ImageLabel") or obj:IsA("ImageButton") then
+                    if obj.Image ~= "" and obj.Visible == false then
+                        obj.Image = ""
+                    end
+                end
+            end
+        end
+    end)
+    
+    print("✅ Ultra Desempenho TURBO ATIVADO!")
 end
 
 local function RemoveUltraPerformance()
     if not PerformanceBackup.IsActive then return end
+    
     pcall(function()
-        for prop, value in pairs(PerformanceBackup.Lighting) do Lighting[prop] = value end
+        for prop, value in pairs(PerformanceBackup.Lighting) do
+            Lighting[prop] = value
+        end
     end)
+    
     pcall(function()
         for _, obj in pairs(PerformanceBackup.RemovedObjects) do
             if obj and obj.Parent == nil then
@@ -430,20 +627,40 @@ local function RemoveUltraPerformance()
             end
         end
     end)
+    
     pcall(function()
         for obj, value in pairs(PerformanceBackup.OriginalProperties) do
-            if obj and obj.Parent then obj.Transparency = value end
+            if obj and obj.Parent then
+                if type(value) == "number" then
+                    if obj:IsA("Sound") then
+                        obj.Volume = value
+                    else
+                        obj.Transparency = value
+                    end
+                elseif type(value) == "string" then
+                    if obj:IsA("Decal") or obj:IsA("Texture") then
+                        obj.Texture = value
+                    end
+                end
+            end
         end
     end)
+    
     pcall(function()
         if PerformanceBackup.TerrainBackup then
             local terrain = workspace:FindFirstChildOfClass("Terrain")
             if terrain then
-                for prop, value in pairs(PerformanceBackup.TerrainBackup) do terrain[prop] = value end
+                for prop, value in pairs(PerformanceBackup.TerrainBackup) do
+                    terrain[prop] = value
+                end
             end
         end
     end)
-    pcall(function() settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic end)
+    
+    pcall(function()
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+        settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Automatic
+    end)
     
     PerformanceBackup.IsActive = false
     PerformanceBackup.RemovedObjects = {}
@@ -451,6 +668,9 @@ local function RemoveUltraPerformance()
     PerformanceBackup.OriginalProperties = {}
     PerformanceBackup.TerrainBackup = nil
     PerformanceBackup.KeptEffects = {}
+    PerformanceBackup.CameraOriginal = {}
+    
+    print("❌ Ultra Desempenho DESATIVADO")
 end
 
 local function ProtectDamageEffects()
@@ -522,7 +742,7 @@ local function IsEnemy(player)
 end
 
 -- ============================================
--- FLY LIVRE - SEM ESPAÇO/SHIFT (v29)
+-- FLY LIVRE 3D
 -- ============================================
 
 local IS_MOBILE = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
@@ -574,7 +794,7 @@ local function StartFly()
     end
     
     CreateFlyInstances()
-    Rayfield:Notify({Title = "Fly Livre", Content = "✅ ATIVADO! WASD/Direcional", Duration = 2})
+    Rayfield:Notify({Title = "Fly Livre", Content = "✅ ATIVADO!", Duration = 2})
 end
 
 local function StopFly()
@@ -635,9 +855,6 @@ local function AntiResetFly()
     end
 end
 
--- ===== ATUALIZAÇÃO DO FLY LIVRE =====
--- PC: WASD move na direção da CÂMERA (sobe/desce conforme olhar)
--- MOBILE: direcional move na direção da CÂMERA
 local function UpdateFly()
     if not FlyActive or not Settings.Fly.Enabled then return end
     if not LocalPlayer.Character then return end
@@ -650,23 +867,19 @@ local function UpdateFly()
     local speed = Settings.Fly.Speed or 150
     local velocity = Vector3.new(0, 0, 0)
     
-    -- ===== MOBILE: direcional =====
     if IS_MOBILE then
         local moveDir = humanoid.MoveDirection
         if moveDir.Magnitude > 0 then
-            -- Direção baseada na câmera (livre 3D)
             local camCFrame = Camera.CFrame
             local camForward = camCFrame.LookVector
             local camRight = camCFrame.RightVector
             
-            -- Combina direção do direcional com a câmera
             local forwardInput = moveDir.Z
             local rightInput = moveDir.X
             
             velocity = (camForward * forwardInput + camRight * rightInput).Unit * speed
         end
     else
-        -- ===== PC: WASD (livre 3D - sobe/desce conforme olhar) =====
         local camCFrame = Camera.CFrame
         local camForward = camCFrame.LookVector
         local camRight = camCFrame.RightVector
@@ -693,7 +906,6 @@ local function UpdateFly()
     
     FlyBodyVelocity.Velocity = velocity
     
-    -- Anti-Reset: mantém orientação vertical estável
     if Settings.Fly.AntiReset then
         FlyBodyGyro.CFrame = CFrame.new(rootPart.Position)
     end
@@ -1381,6 +1593,132 @@ local function CreateUI()
     
     local PerformanceTab = Window:CreateTab("⚡ Performance", 4483362458)
     
+    -- ===== ULTRA DESEMPENHO TURBO =====
+    PerformanceTab:CreateSection("🚀 Ultra Desempenho TURBO")
+    
+    PerformanceTab:CreateToggle({
+        Name = "⚡ Ativar Ultra Desempenho TURBO",
+        CurrentValue = false,
+        Callback = function(v)
+            Settings.UltraPerformance.Enabled = v
+            if v then
+                ApplyUltraPerformance()
+                Rayfield:Notify({Title = "Ultra TURBO", Content = "🚀 ATIVADO! Máximo FPS!", Duration = 3})
+            else
+                RemoveUltraPerformance()
+                Rayfield:Notify({Title = "Ultra TURBO", Content = "⏹️ DESATIVADO", Duration = 3})
+            end
+        end
+    })
+    
+    PerformanceTab:CreateSection("🎨 Remover Gráficos Pesados")
+    
+    PerformanceTab:CreateToggle({Name = "Remover Texturas", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveTextures = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Sombras", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveShadows = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Partículas", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveParticles = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Sky (Céu)", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveSky = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Atmosphere", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveAtmosphere = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Água/Reflexos", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveTerrain = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Sons", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveSounds = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Meshes Alta Res", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveMeshes = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Fog (Névoa)", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveFog = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Sun Rays", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveSunRays = v end})
+    PerformanceTab:CreateToggle({Name = "Remover Depth of Field", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveDepthOfField = v end})
+    
+    PerformanceTab:CreateSection("🔧 Otimizações Turbo (NOVO)")
+    
+    PerformanceTab:CreateToggle({
+        Name = "Reduzir Render Distance",
+        CurrentValue = true,
+        Callback = function(v) Settings.UltraPerformance.ReduceRenderDistance = v end
+    })
+    
+    PerformanceTab:CreateSlider({
+        Name = "Render Distance",
+        Range = {100, 1000},
+        Increment = 50,
+        Suffix = "studs",
+        CurrentValue = 300,
+        Callback = function(v) 
+            Settings.UltraPerformance.RenderDistanceValue = v
+            if Settings.UltraPerformance.Enabled then
+                -- Aplica na hora
+                spawn(function()
+                    pcall(function()
+                        if LocalPlayer.Character then
+                            local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+                            if rootPart then
+                                for _, obj in pairs(workspace:GetDescendants()) do
+                                    if obj:IsA("BasePart") then
+                                        local dist = (obj.Position - rootPart.Position).Magnitude
+                                        if dist > v then
+                                            obj.Transparency = 1
+                                            obj.CanCollide = false
+                                        end
+                                    end
+                                end
+                            end
+                        end
+                    end)
+                end)
+            end
+        end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Remover Parts Desnecessárias",
+        CurrentValue = true,
+        Callback = function(v) Settings.UltraPerformance.RemoveUnnecessaryParts = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Remover Parts Transparentes",
+        CurrentValue = true,
+        Callback = function(v) Settings.UltraPerformance.RemoveTransparentParts = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Forçar Gráficos Mínimos",
+        CurrentValue = true,
+        Callback = function(v) Settings.UltraPerformance.ForceLowGraphics = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Forçar Mesh Detail Mínimo",
+        CurrentValue = true,
+        Callback = function(v) Settings.UltraPerformance.ForceLowMeshDetail = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Otimizar Câmera (Far Plane)",
+        CurrentValue = true,
+        Callback = function(v) Settings.UltraPerformance.OptimizeCamera = v end
+    })
+    
+    PerformanceTab:CreateSection("🛡️ Proteção de Efeitos")
+    
+    PerformanceTab:CreateToggle({
+        Name = "Manter ColorCorrection (Dano)",
+        CurrentValue = true,
+        Callback = function(v) Settings.UltraPerformance.KeepColorCorrection = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Manter Bloom",
+        CurrentValue = true,
+        Callback = function(v) Settings.UltraPerformance.KeepBloom = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Manter Blur",
+        CurrentValue = true,
+        Callback = function(v) Settings.UltraPerformance.KeepBlur = v end
+    })
+    
+    PerformanceTab:CreateLabel("")
+    PerformanceTab:CreateLabel("✅ Mantenha ativado para não bugar tela")
+    
+    -- ===== MEMORY OPTIMIZER =====
     PerformanceTab:CreateSection("🧠 Memory Optimizer PRO")
     
     PerformanceTab:CreateToggle({
@@ -1400,24 +1738,7 @@ local function CreateUI()
     PerformanceTab:CreateSlider({Name = "Intervalo Mínimo", Range = {10, 60}, Increment = 5, Suffix = "s", CurrentValue = 15, Callback = function(v) Settings.MemoryOptimizer.MinInterval = v end})
     PerformanceTab:CreateSlider({Name = "RAM Máxima", Range = {1000, 3000}, Increment = 100, Suffix = "MB", CurrentValue = 1800, Callback = function(v) Settings.MemoryOptimizer.MaxMemoryMB = v end})
     
-    PerformanceTab:CreateSection("📊 Estatísticas")
-    
-    local memCurrentLabel = PerformanceTab:CreateLabel("💾 RAM Atual: 0 MB")
-    local memSavedLabel = PerformanceTab:CreateLabel("💾 Liberado: 0 MB")
-    local memCleanLabel = PerformanceTab:CreateLabel("🧹 Limpezas: 0")
-    
-    spawn(function()
-        while wait(2) do
-            local currentMem = GetMemoryMB()
-            if memCurrentLabel then 
-                local color = currentMem < 1000 and "✅" or currentMem < 1800 and "⚠️" or "🚨"
-                memCurrentLabel:Set(color .. " RAM Atual: " .. currentMem .. " MB") 
-            end
-            if memSavedLabel then memSavedLabel:Set("💾 Liberado: " .. Settings.MemoryOptimizer.MemorySaved .. " MB") end
-            if memCleanLabel then memCleanLabel:Set("🧹 Limpezas: " .. Settings.MemoryOptimizer.TotalCleans) end
-        end
-    end)
-    
+    -- ===== OTIMIZADOR INTERNET =====
     PerformanceTab:CreateSection("🌐 Otimizador de Internet")
     
     PerformanceTab:CreateToggle({
@@ -1435,45 +1756,32 @@ local function CreateUI()
     
     PerformanceTab:CreateSlider({Name = "Intervalo", Range = {1, 10}, Increment = 1, Suffix = "s", CurrentValue = 2, Callback = function(v) Settings.NetworkOptimizer.Interval = v end})
     
-    local pLabel = PerformanceTab:CreateLabel("📡 Ping: 0ms")
-    local pAvgLabel = PerformanceTab:CreateLabel("📊 Média: 0ms")
-    local pOptLabel = PerformanceTab:CreateLabel("🚀 Otimizações: 0")
+    -- ===== ESTATÍSTICAS =====
+    PerformanceTab:CreateSection("📊 Estatísticas")
+    
+    local fpsLabel = PerformanceTab:CreateLabel("📊 FPS: 60")
+    local memCurrentLabel = PerformanceTab:CreateLabel("💾 RAM: 0 MB")
+    local pLabel = PerformanceTab:CreateLabel("📡 Ping: 0 ms")
     
     spawn(function()
         while wait(1) do
-            local currentPing = GetPing()
-            if pLabel then 
-                local color = currentPing < 100 and "✅" or currentPing < 200 and "⚠️" or "🚨"
-                pLabel:Set(color .. " Ping: " .. currentPing .. "ms") 
+            if fpsLabel then
+                local fps = FPSMonitor.CurrentFPS
+                local color = fps >= 50 and "✅" or fps >= 30 and "⚠️" or "🚨"
+                fpsLabel:Set(color .. " FPS: " .. fps)
             end
-            if pAvgLabel then pAvgLabel:Set("📊 Média: " .. Settings.NetworkOptimizer.AvgPing .. "ms") end
-            if pOptLabel then pOptLabel:Set("🚀 Otimizações: " .. Settings.NetworkOptimizer.TotalOptimizations) end
+            if memCurrentLabel then
+                local mem = GetMemoryMB()
+                local color = mem < 1000 and "✅" or mem < 1800 and "⚠️" or "🚨"
+                memCurrentLabel:Set(color .. " RAM: " .. mem .. " MB")
+            end
+            if pLabel then
+                local ping = GetPing()
+                local color = ping < 100 and "✅" or ping < 200 and "⚠️" or "🚨"
+                pLabel:Set(color .. " Ping: " .. ping .. " ms")
+            end
         end
     end)
-    
-    PerformanceTab:CreateSection("🚀 Ultra Desempenho")
-    
-    PerformanceTab:CreateToggle({
-        Name = "⚡ Ativar Ultra Desempenho",
-        CurrentValue = false,
-        Callback = function(v)
-            Settings.UltraPerformance.Enabled = v
-            if v then
-                ApplyUltraPerformance()
-                Rayfield:Notify({Title = "Ultra Desempenho", Content = "🚀 ATIVADO!", Duration = 3})
-            else
-                RemoveUltraPerformance()
-                Rayfield:Notify({Title = "Ultra Desempenho", Content = "⏹️ DESATIVADO", Duration = 3})
-            end
-        end
-    })
-    
-    PerformanceTab:CreateToggle({Name = "Remover Texturas", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveTextures = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Sombras", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveShadows = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Partículas", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveParticles = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Sky", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveSky = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Água", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveTerrain = v end})
-    PerformanceTab:CreateToggle({Name = "Remover Sons", CurrentValue = true, Callback = function(v) Settings.UltraPerformance.RemoveSounds = v end})
 
     -- ============================================
     -- ABA: PLAYER
@@ -1550,34 +1858,15 @@ local function CreateUI()
         Callback = function(v) Settings.Fly.Speed = v end
     })
     
-    MoveTab:CreateToggle({
-        Name = "Anti-Reset Fly",
-        CurrentValue = true,
-        Callback = function(v) Settings.Fly.AntiReset = v end
-    })
-    
-    MoveTab:CreateToggle({
-        Name = "Auto-Reiniciar Fly",
-        CurrentValue = true,
-        Callback = function(v) Settings.Fly.AutoRestart = v end
-    })
-    
-    MoveTab:CreateToggle({
-        Name = "Noclip Automático",
-        CurrentValue = true,
-        Callback = function(v) Settings.Fly.AutoNoclip = v end
-    })
+    MoveTab:CreateToggle({Name = "Anti-Reset Fly", CurrentValue = true, Callback = function(v) Settings.Fly.AntiReset = v end})
+    MoveTab:CreateToggle({Name = "Auto-Reiniciar Fly", CurrentValue = true, Callback = function(v) Settings.Fly.AutoRestart = v end})
+    MoveTab:CreateToggle({Name = "Noclip Automático", CurrentValue = true, Callback = function(v) Settings.Fly.AutoNoclip = v end})
     
     MoveTab:CreateLabel("")
     MoveTab:CreateLabel("🎮 COMO USAR:")
     MoveTab:CreateLabel("📱 MOBILE: use o DIRECIONAL")
     MoveTab:CreateLabel("💻 PC: use WASD")
-    MoveTab:CreateLabel("")
-    MoveTab:CreateLabel("✨ Olhe para CIMA e mova = SOBE")
-    MoveTab:CreateLabel("✨ Olhe para BAIXO e mova = DESCE")
-    MoveTab:CreateLabel("✨ Olhe reto e mova = ANDA NO AR")
-    MoveTab:CreateLabel("")
-    MoveTab:CreateLabel("🚫 SEM ESPAÇO / SEM SHIFT")
+    MoveTab:CreateLabel("✨ Olhe pra cima/baixo para subir/descer")
     
     MoveTab:CreateSection("✈️ Fly Player (Hover)")
     MoveTab:CreateToggle({Name = "Fly Player (Hover)", CurrentValue = false, Callback = function(v)
@@ -1630,36 +1919,31 @@ local function CreateUI()
     -- ============================================
     
     local AboutTab = Window:CreateTab("ℹ️ Sobre", 4483362458)
-    AboutTab:CreateLabel("⚡ ComandoGame Mobile v29.0")
+    AboutTab:CreateLabel("⚡ ComandoGame Mobile v30.0")
     AboutTab:CreateLabel("👤 Criador: Mk_gaming")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("🆕 v29.0:")
-    AboutTab:CreateLabel("✅ FLY LIVRE 3D")
-    AboutTab:CreateLabel("🚫 Sem ESPAÇO / Sem SHIFT")
+    AboutTab:CreateLabel("🆕 v30.0 - ULTRA TURBO:")
+    AboutTab:CreateLabel("✅ Remove Sky + Atmosphere")
+    AboutTab:CreateLabel("✅ Remove Sun Rays + DOF")
+    AboutTab:CreateLabel("✅ Reduz Render Distance")
+    AboutTab:CreateLabel("✅ Remove Parts pequenas")
+    AboutTab:CreateLabel("✅ Remove Parts transparentes")
+    AboutTab:CreateLabel("✅ Força gráficos mínimos")
+    AboutTab:CreateLabel("✅ Otimiza câmera")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("📱 MOBILE:")
-    AboutTab:CreateLabel("• Direcional = voar livremente")
-    AboutTab:CreateLabel("• Olhar pra cima = sobe")
-    AboutTab:CreateLabel("• Olhar pra baixo = desce")
-    AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("💻 PC:")
-    AboutTab:CreateLabel("• WASD = voar livremente")
-    AboutTab:CreateLabel("• Olhar pra cima = sobe")
-    AboutTab:CreateLabel("• Olhar pra baixo = desce")
-    AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("✨ Voo natural em 3D!")
+    AboutTab:CreateLabel("🚀 Fly Livre 3D")
+    AboutTab:CreateLabel("🧠 Memory Optimizer PRO")
+    AboutTab:CreateLabel("🌐 Otimizador de Internet")
 end
 
 CreateUI()
 
 Rayfield:Notify({
     Title = "ComandoGame Mobile",
-    Content = "⚡ v29.0 - FLY LIVRE 3D!",
+    Content = "⚡ v30.0 - ULTRA DESEMPENHO TURBO!",
     Duration = 5,
 })
 
-print("✅ ComandoGame Mobile v29.0 carregado!")
-print("🚀 FLY LIVRE - Sem Espaço/Shift")
-print("📱 Mobile: direcional + câmera")
-print("💻 PC: WASD + câmera")
-print("✨ Olhe pra cima/baixo para subir/descer")
+print("✅ ComandoGame Mobile v30.0 carregado!")
+print("🚀 ULTRA DESEMPENHO TURBO!")
+print("📊 Máximo FPS possível!")
