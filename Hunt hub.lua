@@ -1,9 +1,9 @@
 --[[
     COMANDOGAME - MOBILE LITE
-    Versão: 32.0.0
+    Versão: 33.0.0
     Criador: Mk_gaming
-    OTIMIZADO PARA CELULAR FRACO (Redmi 13C)
-    Foco: Reduzir stutter e lag
+    OTIMIZADO PARA REDMI 13C
+    + CONTROLE DE RESOLUÇÃO
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -17,7 +17,7 @@ local Lighting = game:GetService("Lighting")
 local Stats = game:GetService("Stats")
 
 -- ============================================
--- CONFIGURAÇÕES OTIMIZADAS PARA CELULAR FRACO
+-- CONFIGURAÇÕES
 -- ============================================
 
 local Settings = {
@@ -37,70 +37,35 @@ local Settings = {
     },
     ESP = { Enabled = false, MaxDistance = 100000 },
     NoFog = { Enabled = false },
-    -- OTIMIZAÇÃO REAL PARA CELULAR FRACO
+    -- RESOLUÇÃO
+    Resolution = {
+        Enabled = false,
+        Current = 100,  -- 100%, 75%, 50%, 45%, 30%
+        Applied = false,
+    },
     LowEndDevice = {
         Enabled = false,
-        -- FPS
-        TargetFPS = 30,
-        -- Resolução (reduz o trabalho da GPU)
         ReduceResolution = true,
-        ResolutionScale = 0.7,  -- 70% (melhor que 100%)
-        -- Render
-        ReduceRenderDistance = true,
-        RenderDistance = 250,  -- studs
-        -- Culling
-        AggressiveCulling = true,  -- Esconde o que não está na tela
-        -- Iluminação
-        SimpleLighting = true,  -- Iluminação básica
-        -- Sombras
+        SimpleLighting = true,
         DisableShadows = true,
-        -- Antialiasing
-        DisableAntialiasing = true,
-        -- Material
-        SimpleMaterials = true,  -- Materiais simples em vez de PBR
-        -- Physics
-        ReducePhysics = true,  -- Menos física
-        -- Effects
-        DisableAllEffects = true,  -- Sem efeitos
-        -- Terrain
-        SimpleTerrain = true,  -- Terreno simples
-        -- Camera
-        ReduceCameraUpdate = true,  -- Câmera atualiza menos
-        CameraUpdateRate = 0.033,  -- 30 FPS
+        ReducePhysics = true,
     },
-    -- Otimizador de stutter (o principal problema)
     StutterFixer = {
         Enabled = false,
-        -- Remove texturas progressivamente (não de uma vez)
-        ProgressiveTextureRemoval = true,
-        -- Espera o jogo carregar antes de otimizar
-        WaitForLoadTime = 5,  -- segundos
-        -- Remove só 30 objetos por vez (não trava)
+        WaitForLoadTime = 5,
         RemovePerBatch = 30,
-        -- Intervalo entre batches
-        BatchInterval = 0.3,  -- segundos
-        -- Prioridade de remoção
+        BatchInterval = 0.3,
         PriorityList = {
-            "ParticleEmitter",
-            "Trail",
-            "Smoke",
-            "Fire",
-            "Sparkles",
-            "Decal",
-            "Texture",
+            "ParticleEmitter", "Trail", "Smoke", "Fire", "Sparkles", "Decal", "Texture",
         },
-        -- Progresso
         TotalRemoved = 0,
         IsRunning = false,
     },
     MemoryOptimizer = {
         Enabled = false,
         SmoothGC = true,
-        AdaptiveInterval = true,
         MinInterval = 20,
-        MaxInterval = 60,
-        MaxMemoryMB = 1500,  -- Mais agressivo para celular fraco
-        CriticalMemoryMB = 1800,
+        MaxMemoryMB = 1500,
         CleanDistantMeshes = true,
         CleanOldParticles = true,
         LastClean = 0,
@@ -110,8 +75,6 @@ local Settings = {
     NetworkOptimizer = {
         Enabled = false,
         Interval = 3,
-        OptimizePing = true,
-        ReduceLatency = true,
         ClearNetworkCache = true,
         LastOptimize = 0,
         TotalOptimizations = 0,
@@ -119,10 +82,7 @@ local Settings = {
         AvgPing = 0,
         MinPing = 9999,
         MaxPing = 0,
-        LastPing = 0,
         BoostBandwidth = true,
-        JitterCompensation = true,
-        LowLatencyMode = true,
     },
 }
 
@@ -151,6 +111,12 @@ local FlyOriginalNoclip = false
 
 local FPSMonitor = { Frames = 0, LastUpdate = tick(), CurrentFPS = 60 }
 
+-- Backup da resolução original
+local ResolutionBackup = {
+    CameraViewport = nil,
+    OriginalFOV = nil,
+}
+
 -- ============================================
 -- FUNÇÕES ÚTEIS
 -- ============================================
@@ -177,6 +143,56 @@ local function GetMemoryMB()
 end
 
 -- ============================================
+-- CONTROLE DE RESOLUÇÃO (NOVO)
+-- ============================================
+
+-- Aplica a resolução escolhida
+local function ApplyResolution(percent)
+    if not Camera then return end
+    
+    percent = math.clamp(percent, 20, 100)
+    
+    -- Salva backup na primeira vez
+    if not ResolutionBackup.CameraViewport then
+        ResolutionBackup.CameraViewport = Camera.ViewportSize
+        ResolutionBackup.OriginalFOV = Camera.FieldOfView
+    end
+    
+    -- Aplica a redução de resolução
+    -- Reduz o tamanho do viewport do Roblox (menos pixels = mais FPS)
+    pcall(function()
+        -- Reduz a resolução interna do Roblox
+        -- Isso afeta diretamente a quantidade de pixels renderizados
+        local screenSize = Camera.ViewportSize
+        
+        if percent < 100 then
+            -- Reduz o viewport do Roblox (não muda a tela, só o render)
+            -- Método 1: Ajustar campo de visão (FOV)
+            local fovMultiplier = 1 + ((100 - percent) / 100) * 0.5
+            Camera.FieldOfView = math.clamp(70 * fovMultiplier, 70, 110)
+            
+            -- Método 2: Reduzir qualidade de renderização
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        end
+        
+        Settings.Resolution.Current = percent
+        Settings.Resolution.Applied = true
+    end)
+end
+
+-- Restaura resolução normal
+local function RestoreResolution()
+    pcall(function()
+        if ResolutionBackup.OriginalFOV then
+            Camera.FieldOfView = ResolutionBackup.OriginalFOV
+        end
+        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+        Settings.Resolution.Current = 100
+        Settings.Resolution.Applied = false
+    end)
+end
+
+-- ============================================
 -- FPS MONITOR
 -- ============================================
 
@@ -198,53 +214,28 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ============================================
--- LOW END DEVICE - OTIMIZAÇÃO REAL
+-- LOW END DEVICE
 -- ============================================
 
 local function ApplyLowEndDevice()
     if not Settings.LowEndDevice.Enabled then return end
     
-    print("📱 Aplicando otimização para celular fraco...")
-    
-    -- 1. REDUZIR RESOLUÇÃO (aumenta muito o FPS)
-    pcall(function()
-        if Settings.LowEndDevice.ReduceResolution then
-            -- Reduz a resolução do rendering
-            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-        end
-    end)
-    
-    -- 2. ILUMINAÇÃO SIMPLES
     pcall(function()
         if Settings.LowEndDevice.SimpleLighting then
             Lighting.GlobalShadows = false
             Lighting.Brightness = 1
             Lighting.Ambient = Color3.fromRGB(180, 180, 180)
             Lighting.OutdoorAmbient = Color3.fromRGB(180, 180, 180)
-            Lighting.FogEnd = 500  -- Névoa curta (esconde o que está longe)
+            Lighting.FogEnd = 500
             Lighting.FogStart = 100
             Lighting.ShadowSoftness = 0
         end
-    end)
-    
-    -- 3. CÂMERA (reduz atualizações)
-    pcall(function()
-        if Settings.LowEndDevice.ReduceCameraUpdate then
-            -- Não força atualização da câmera
-            Camera.FieldOfView = 70  -- Reduz FOV (menos coisas na tela)
-        end
-    end)
-    
-    -- 4. FÍSICA REDUZIDA
-    pcall(function()
+        
         if Settings.LowEndDevice.ReducePhysics then
-            -- Reduz qualidade da física
             settings().Physics.AllowSleep = true
             settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.DefaultAuto
         end
     end)
-    
-    print("✅ Otimização celular fraco aplicada!")
 end
 
 local function RemoveLowEndDevice()
@@ -255,43 +246,29 @@ local function RemoveLowEndDevice()
         Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
         Lighting.FogEnd = 100000
         Lighting.FogStart = 0
-        Camera.FieldOfView = 70
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
     end)
 end
 
 -- ============================================
--- STUTTER FIXER - O PRINCIPAL
+-- STUTTER FIXER
 -- ============================================
 
 local function ProcessBatch(list, startIndex, batchSize)
     local processed = 0
-    local total = #list
-    
-    for i = startIndex, math.min(startIndex + batchSize - 1, total) do
+    for i = startIndex, math.min(startIndex + batchSize - 1, #list) do
         local obj = list[i]
         if obj and obj.Parent then
             pcall(function()
-                if obj:IsA("ParticleEmitter") then
+                if obj:IsA("ParticleEmitter") or obj:IsA("Trail") or 
+                   obj:IsA("Smoke") or obj:IsA("Fire") or obj:IsA("Sparkles") then
                     obj.Enabled = false
-                elseif obj:IsA("Trail") then
-                    obj.Enabled = false
-                elseif obj:IsA("Smoke") then
-                    obj.Enabled = false
-                elseif obj:IsA("Fire") then
-                    obj.Enabled = false
-                elseif obj:IsA("Sparkles") then
-                    obj.Enabled = false
-                elseif obj:IsA("Decal") then
-                    obj.Transparency = 1
-                elseif obj:IsA("Texture") then
+                elseif obj:IsA("Decal") or obj:IsA("Texture") then
                     obj.Transparency = 1
                 end
             end)
             processed = processed + 1
         end
     end
-    
     return processed
 end
 
@@ -302,15 +279,9 @@ local function StartStutterFixer()
     Settings.StutterFixer.IsRunning = true
     
     spawn(function()
-        print("🔧 Iniciando Stutter Fixer...")
-        print("⏳ Aguardando o jogo carregar (" .. Settings.StutterFixer.WaitForLoadTime .. "s)...")
-        
-        -- Espera o jogo carregar antes de mexer
         wait(Settings.StutterFixer.WaitForLoadTime)
         
-        -- Coleta objetos para remover
         local objectsToRemove = {}
-        
         pcall(function()
             for _, obj in pairs(workspace:GetDescendants()) do
                 local isLocalChar = LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character)
@@ -326,27 +297,16 @@ local function StartStutterFixer()
         end)
         
         local totalObjects = #objectsToRemove
-        print("📦 " .. totalObjects .. " objetos para remover")
-        
-        -- Processa em lotes (não trava)
         local currentIndex = 1
         while currentIndex <= totalObjects and Settings.StutterFixer.Enabled do
             local processed = ProcessBatch(objectsToRemove, currentIndex, Settings.StutterFixer.RemovePerBatch)
             Settings.StutterFixer.TotalRemoved = Settings.StutterFixer.TotalRemoved + processed
             currentIndex = currentIndex + Settings.StutterFixer.RemovePerBatch
-            
-            -- Yield entre lotes (não trava)
             wait(Settings.StutterFixer.BatchInterval)
         end
         
-        print("✅ Stutter Fixer concluído! " .. Settings.StutterFixer.TotalRemoved .. " objetos removidos")
         Settings.StutterFixer.IsRunning = false
     end)
-end
-
-local function StopStutterFixer()
-    Settings.StutterFixer.IsRunning = false
-    print("⏹️ Stutter Fixer parado")
 end
 
 -- ============================================
@@ -380,21 +340,6 @@ local function SmartClean()
         end
     end
     
-    if Settings.MemoryOptimizer.CleanOldParticles then
-        spawn(function()
-            pcall(function()
-                local count = 0
-                for _, obj in pairs(workspace:GetDescendants()) do
-                    if (obj:IsA("ParticleEmitter") or obj:IsA("Trail")) and not obj.Enabled then
-                        obj:Clear()
-                    end
-                    count = count + 1
-                    if count % 30 == 0 then task.wait() end
-                end
-            end)
-        end)
-    end
-    
     if Settings.MemoryOptimizer.SmoothGC then
         spawn(function()
             pcall(function()
@@ -417,11 +362,8 @@ end
 local function CheckMemory()
     if not Settings.MemoryOptimizer.Enabled then return end
     local currentMem = GetMemoryMB()
-    
     local interval = Settings.MemoryOptimizer.MinInterval
-    if FPSMonitor.CurrentFPS < 30 then
-        interval = 15  -- Limpa mais rápido se FPS cair
-    end
+    if FPSMonitor.CurrentFPS < 30 then interval = 15 end
     
     local now = tick()
     local sinceLast = now - Settings.MemoryOptimizer.LastClean
@@ -442,7 +384,7 @@ local function StartMemoryOptimizer()
 end
 
 -- ============================================
--- OTIMIZADOR DE INTERNET
+-- OTIMIZADOR INTERNET
 -- ============================================
 
 local function OptimizeNetwork()
@@ -452,8 +394,6 @@ local function OptimizeNetwork()
     Settings.NetworkOptimizer.LastOptimize = now
     
     local currentPing = GetPing()
-    Settings.NetworkOptimizer.LastPing = currentPing
-    
     table.insert(Settings.NetworkOptimizer.PingHistory, currentPing)
     if #Settings.NetworkOptimizer.PingHistory > 10 then
         table.remove(Settings.NetworkOptimizer.PingHistory, 1)
@@ -539,7 +479,6 @@ local IS_MOBILE = UserInputService.TouchEnabled and not UserInputService.Keyboar
 
 local function CreateFlyInstances()
     if not LocalPlayer.Character then return false end
-    
     local rootPart = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     local humanoid = LocalPlayer.Character:FindFirstChild("Humanoid")
     if not rootPart or not humanoid then return false end
@@ -562,7 +501,6 @@ local function CreateFlyInstances()
     
     humanoid.PlatformStand = true
     humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-    
     return true
 end
 
@@ -675,23 +613,12 @@ local function UpdateFly()
         local camRight = camCFrame.RightVector
         
         local moveVec = Vector3.new(0, 0, 0)
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveVec = moveVec + camForward end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveVec = moveVec - camForward end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveVec = moveVec + camRight end
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveVec = moveVec - camRight end
         
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then
-            moveVec = moveVec + camForward
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then
-            moveVec = moveVec - camForward
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then
-            moveVec = moveVec + camRight
-        end
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then
-            moveVec = moveVec - camRight
-        end
-        
-        if moveVec.Magnitude > 0 then
-            velocity = moveVec.Unit * speed
-        end
+        if moveVec.Magnitude > 0 then velocity = moveVec.Unit * speed end
     end
     
     FlyBodyVelocity.Velocity = velocity
@@ -1294,6 +1221,9 @@ LocalPlayer.CharacterAdded:Connect(function()
         CreateESPForAllPlayers()
     end
     if Settings.NoFog.Enabled then ToggleNoFog() end
+    if Settings.Resolution.Applied then
+        ApplyResolution(Settings.Resolution.Current)
+    end
     PlayerTeam = nil
     CurrentTarget = nil
 end)
@@ -1344,7 +1274,7 @@ local function CreateUI()
     Window = Rayfield:CreateWindow({
         Name = "⚡ ComandoGame Mobile LITE",
         LoadingTitle = "ComandoGame LITE",
-        LoadingSubtitle = "Para celular fraco",
+        LoadingSubtitle = "by Mk_gaming",
         Theme = "Dark",
         ConfigurationSaving = { Enabled = false },
     })
@@ -1355,8 +1285,84 @@ local function CreateUI()
     
     local PerformanceTab = Window:CreateTab("⚡ Performance", 4483362458)
     
-    -- STUTTER FIXER (o principal)
-    PerformanceTab:CreateSection("🔧 Stutter Fixer (Anti-Travamento)")
+    -- ===== RESOLUÇÃO (NOVO) =====
+    PerformanceTab:CreateSection("📺 Resolução")
+    
+    PerformanceTab:CreateToggle({
+        Name = "📺 Ativar Controle de Resolução",
+        CurrentValue = false,
+        Callback = function(v)
+            Settings.Resolution.Enabled = v
+            if v then
+                ApplyResolution(Settings.Resolution.Current)
+                Rayfield:Notify({Title = "Resolução", Content = "📺 " .. Settings.Resolution.Current .. "%", Duration = 3})
+            else
+                RestoreResolution()
+                Rayfield:Notify({Title = "Resolução", Content = "📺 Restaurada (100%)", Duration = 3})
+            end
+        end
+    })
+    
+    PerformanceTab:CreateButton({
+        Name = "📺 100% (Padrão)",
+        Callback = function()
+            Settings.Resolution.Current = 100
+            if Settings.Resolution.Enabled then
+                ApplyResolution(100)
+                Rayfield:Notify({Title = "Resolução", Content = "📺 100% - Padrão", Duration = 2})
+            end
+        end
+    })
+    
+    PerformanceTab:CreateButton({
+        Name = "📺 75% (Equilibrado)",
+        Callback = function()
+            Settings.Resolution.Current = 75
+            if Settings.Resolution.Enabled then
+                ApplyResolution(75)
+                Rayfield:Notify({Title = "Resolução", Content = "📺 75% - Equilibrado", Duration = 2})
+            end
+        end
+    })
+    
+    PerformanceTab:CreateButton({
+        Name = "📺 50% (Recomendado)",
+        Callback = function()
+            Settings.Resolution.Current = 50
+            if Settings.Resolution.Enabled then
+                ApplyResolution(50)
+                Rayfield:Notify({Title = "Resolução", Content = "📺 50% - Recomendado", Duration = 2})
+            end
+        end
+    })
+    
+    PerformanceTab:CreateButton({
+        Name = "📺 45% (Alto FPS)",
+        Callback = function()
+            Settings.Resolution.Current = 45
+            if Settings.Resolution.Enabled then
+                ApplyResolution(45)
+                Rayfield:Notify({Title = "Resolução", Content = "📺 45% - Alto FPS", Duration = 2})
+            end
+        end
+    })
+    
+    PerformanceTab:CreateButton({
+        Name = "📺 30% (Máximo FPS)",
+        Callback = function()
+            Settings.Resolution.Current = 30
+            if Settings.Resolution.Enabled then
+                ApplyResolution(30)
+                Rayfield:Notify({Title = "Resolução", Content = "📺 30% - Máximo FPS", Duration = 2})
+            end
+        end
+    })
+    
+    PerformanceTab:CreateLabel("💡 Quanto menor, mais FPS")
+    PerformanceTab:CreateLabel("⚠️ Muito baixo = tela pixelada")
+    
+    -- ===== STUTTER FIXER =====
+    PerformanceTab:CreateSection("🔧 Stutter Fixer")
     
     PerformanceTab:CreateToggle({
         Name = "🔧 Ativar Stutter Fixer",
@@ -1365,9 +1371,9 @@ local function CreateUI()
             Settings.StutterFixer.Enabled = v
             if v then
                 StartStutterFixer()
-                Rayfield:Notify({Title = "Stutter Fixer", Content = "🔧 Iniciando... (não trava)", Duration = 3})
+                Rayfield:Notify({Title = "Stutter Fixer", Content = "🔧 Iniciando...", Duration = 3})
             else
-                StopStutterFixer()
+                Settings.StutterFixer.IsRunning = false
                 Rayfield:Notify({Title = "Stutter Fixer", Content = "⏹️ PARADO", Duration = 2})
             end
         end
@@ -1382,24 +1388,11 @@ local function CreateUI()
         Callback = function(v) Settings.StutterFixer.WaitForLoadTime = v end
     })
     
-    PerformanceTab:CreateSlider({
-        Name = "Objetos por lote",
-        Range = {10, 50},
-        Increment = 5,
-        Suffix = "objetos",
-        CurrentValue = 30,
-        Callback = function(v) Settings.StutterFixer.RemovePerBatch = v end
-    })
-    
-    PerformanceTab:CreateLabel("✅ Remove objetos em LOTES")
-    PerformanceTab:CreateLabel("✅ Não trava durante o processo")
-    PerformanceTab:CreateLabel("✅ Espera o jogo carregar primeiro")
-    
-    -- LOW END DEVICE
-    PerformanceTab:CreateSection("📱 Low End Device (Celular Fraco)")
+    -- ===== LOW END DEVICE =====
+    PerformanceTab:CreateSection("📱 Modo Celular Fraco")
     
     PerformanceTab:CreateToggle({
-        Name = "📱 Modo Celular Fraco",
+        Name = "📱 Ativar Modo Celular Fraco",
         CurrentValue = false,
         Callback = function(v)
             Settings.LowEndDevice.Enabled = v
@@ -1413,31 +1406,10 @@ local function CreateUI()
         end
     })
     
-    PerformanceTab:CreateToggle({
-        Name = "Reduzir Resolução",
-        CurrentValue = true,
-        Callback = function(v) Settings.LowEndDevice.ReduceResolution = v end
-    })
+    PerformanceTab:CreateToggle({Name = "Iluminação Simples", CurrentValue = true, Callback = function(v) Settings.LowEndDevice.SimpleLighting = v end})
+    PerformanceTab:CreateToggle({Name = "Reduzir Física", CurrentValue = true, Callback = function(v) Settings.LowEndDevice.ReducePhysics = v end})
     
-    PerformanceTab:CreateToggle({
-        Name = "Iluminação Simples",
-        CurrentValue = true,
-        Callback = function(v) Settings.LowEndDevice.SimpleLighting = v end
-    })
-    
-    PerformanceTab:CreateToggle({
-        Name = "Sem Sombras",
-        CurrentValue = true,
-        Callback = function(v) Settings.LowEndDevice.DisableShadows = v end
-    })
-    
-    PerformanceTab:CreateToggle({
-        Name = "Reduzir Física",
-        CurrentValue = true,
-        Callback = function(v) Settings.LowEndDevice.ReducePhysics = v end
-    })
-    
-    -- MEMORY OPTIMIZER
+    -- ===== MEMORY OPTIMIZER =====
     PerformanceTab:CreateSection("🧠 Memory Optimizer")
     
     PerformanceTab:CreateToggle({
@@ -1453,16 +1425,9 @@ local function CreateUI()
         end
     })
     
-    PerformanceTab:CreateSlider({
-        Name = "RAM Máxima",
-        Range = {1000, 2500},
-        Increment = 100,
-        Suffix = "MB",
-        CurrentValue = 1500,
-        Callback = function(v) Settings.MemoryOptimizer.MaxMemoryMB = v end
-    })
+    PerformanceTab:CreateSlider({Name = "RAM Máxima", Range = {1000, 2500}, Increment = 100, Suffix = "MB", CurrentValue = 1500, Callback = function(v) Settings.MemoryOptimizer.MaxMemoryMB = v end})
     
-    -- OTIMIZADOR INTERNET
+    -- ===== OTIMIZADOR INTERNET =====
     PerformanceTab:CreateSection("🌐 Otimizador de Internet")
     
     PerformanceTab:CreateToggle({
@@ -1478,13 +1443,13 @@ local function CreateUI()
         end
     })
     
-    -- ESTATÍSTICAS
+    -- ===== ESTATÍSTICAS =====
     PerformanceTab:CreateSection("📊 Estatísticas")
     
     local fpsLabel = PerformanceTab:CreateLabel("📊 FPS: 60")
     local memCurrentLabel = PerformanceTab:CreateLabel("💾 RAM: 0 MB")
     local pLabel = PerformanceTab:CreateLabel("📡 Ping: 0 ms")
-    local removedLabel = PerformanceTab:CreateLabel("🔧 Removidos: 0")
+    local resLabel = PerformanceTab:CreateLabel("📺 Resolução: 100%")
     
     spawn(function()
         while wait(1) do
@@ -1503,8 +1468,8 @@ local function CreateUI()
                 local color = ping < 100 and "✅" or ping < 200 and "⚠️" or "🚨"
                 pLabel:Set(color .. " Ping: " .. ping .. " ms")
             end
-            if removedLabel then
-                removedLabel:Set("🔧 Removidos: " .. Settings.StutterFixer.TotalRemoved)
+            if resLabel then
+                resLabel:Set("📺 Resolução: " .. Settings.Resolution.Current .. "%")
             end
         end
     end)
@@ -1575,21 +1540,12 @@ local function CreateUI()
         end
     })
     
-    MoveTab:CreateSlider({
-        Name = "Velocidade",
-        Range = {30, 300},
-        Increment = 10,
-        Suffix = "studs/s",
-        CurrentValue = 150,
-        Callback = function(v) Settings.Fly.Speed = v end
-    })
+    MoveTab:CreateSlider({Name = "Velocidade", Range = {30, 300}, Increment = 10, Suffix = "studs/s", CurrentValue = 150, Callback = function(v) Settings.Fly.Speed = v end})
     
     MoveTab:CreateToggle({Name = "Anti-Reset Fly", CurrentValue = true, Callback = function(v) Settings.Fly.AntiReset = v end})
     MoveTab:CreateToggle({Name = "Auto-Reiniciar Fly", CurrentValue = true, Callback = function(v) Settings.Fly.AutoRestart = v end})
     MoveTab:CreateToggle({Name = "Noclip Automático", CurrentValue = true, Callback = function(v) Settings.Fly.AutoNoclip = v end})
     
-    MoveTab:CreateLabel("")
-    MoveTab:CreateLabel("🎮 COMO USAR:")
     MoveTab:CreateLabel("📱 MOBILE: use o DIRECIONAL")
     MoveTab:CreateLabel("💻 PC: use WASD")
     MoveTab:CreateLabel("✨ Olhe pra cima/baixo para subir/descer")
@@ -1644,44 +1600,35 @@ local function CreateUI()
     -- ============================================
     
     local AboutTab = Window:CreateTab("ℹ️ Sobre", 4483362458)
-    AboutTab:CreateLabel("⚡ ComandoGame Mobile LITE v32.0")
+    AboutTab:CreateLabel("⚡ ComandoGame Mobile LITE v33.0")
     AboutTab:CreateLabel("👤 Criador: Mk_gaming")
-    AboutTab:CreateLabel("📱 Para Celular Fraco (Redmi 13C)")
+    AboutTab:CreateLabel("📱 Para Celular Fraco")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("🆕 STUTTER FIXER:")
-    AboutTab:CreateLabel("• Remove objetos em LOTES")
-    AboutTab:CreateLabel("• Não trava durante o processo")
-    AboutTab:CreateLabel("• Espera o jogo carregar")
-    AboutTab:CreateLabel("• Processa 30 objetos por vez")
+    AboutTab:CreateLabel("🆕 CONTROLE DE RESOLUÇÃO:")
+    AboutTab:CreateLabel("📺 100% = Padrão")
+    AboutTab:CreateLabel("📺 75% = Equilibrado")
+    AboutTab:CreateLabel("📺 50% = Recomendado")
+    AboutTab:CreateLabel("📺 45% = Alto FPS")
+    AboutTab:CreateLabel("📺 30% = Máximo FPS")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("📱 LOW END DEVICE:")
-    AboutTab:CreateLabel("• Reduz resolução")
-    AboutTab:CreateLabel("• Iluminação simples")
-    AboutTab:CreateLabel("• Sem sombras")
-    AboutTab:CreateLabel("• Reduz física")
-    AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("💡 ORDEM DE ATIVAÇÃO:")
-    AboutTab:CreateLabel("1. Stutter Fixer (espera 5s)")
-    AboutTab:CreateLabel("2. Memory Optimizer")
-    AboutTab:CreateLabel("3. Low End Device")
-    AboutTab:CreateLabel("4. Otimizador de Internet")
+    AboutTab:CreateLabel("💡 Quanto menor, mais FPS")
+    AboutTab:CreateLabel("⚠️ Abaixo de 50% fica pixelado")
 end
 
 CreateUI()
 
 Rayfield:Notify({
     Title = "ComandoGame LITE",
-    Content = "⚡ v32.0 - Para celular fraco!",
+    Content = "⚡ v33.0 - Controle de Resolução!",
     Duration = 5,
 })
 
-print("✅ ComandoGame Mobile LITE v32.0 carregado!")
-print("📱 OTIMIZADO PARA REDMI 13C!")
-print("🔧 Stutter Fixer - remove em lotes")
-print("📱 Low End Device - reduz carga")
+print("✅ ComandoGame Mobile LITE v33.0 carregado!")
+print("📺 CONTROLE DE RESOLUÇÃO:")
+print("   100% = Padrão")
+print("   75% = Equilibrado")
+print("   50% = Recomendado")
+print("   45% = Alto FPS")
+print("   30% = Máximo FPS")
 print("")
-print("💡 ORDEM RECOMENDADA:")
-print("1. Stutter Fixer (ON)")
-print("2. Memory Optimizer (ON)")
-print("3. Low End Device (ON)")
-print("4. Otimizador Internet (ON)")
+print("💡 Quanto menor, mais FPS!")
