@@ -1,5 +1,6 @@
 -- Menu Multi-Jogos - Mk_gaming (Nukermode Style + ScriptsDoDev + Version)
 -- Detecta o jogo atual e libera apenas os scripts compatíveis
+-- ✅ Fecha automaticamente após executar qualquer script
 
 local player = game.Players.LocalPlayer
 if not player then repeat wait() until game.Players.LocalPlayer end
@@ -150,7 +151,9 @@ local function showMaintenanceNotice(scriptName, reason)
     end)
     
     task.wait(5)
-    noticeGui:Destroy()
+    if noticeGui and noticeGui.Parent then
+        noticeGui:Destroy()
+    end
 end
 
 -- ============================================
@@ -1137,7 +1140,6 @@ local function switchPage(pageId)
             entry.button.BackgroundColor3 = Color3.fromRGB(120, 60, 200)
             entry.button.BackgroundTransparency = 0.1
             entry.button.TextColor3 = Color3.fromRGB(255, 255, 255)
-            -- Barra lateral roxa indicando ativo
             if not entry.button:FindFirstChild("ActiveBar") then
                 local bar = Instance.new("Frame")
                 bar.Name = "ActiveBar"
@@ -1247,11 +1249,8 @@ statusLabel.TextXAlignment = Enum.TextXAlignment.Left
 statusLabel.Parent = bottomBar
 
 -- ============================================
--- FUNÇÃO AUTO EXECUTE
+-- FUNÇÕES AUXILIARES
 -- ============================================
-local autoRunning = false
-local autoTimerThread = nil
-
 local function getSelectedList()
     if currentPage == "devscripts" then
         return devSelected
@@ -1265,6 +1264,12 @@ local function getAllScriptsList()
     end
     return scripts
 end
+
+-- ============================================
+-- FUNÇÃO AUTO EXECUTE
+-- ============================================
+local autoRunning = false
+local autoTimerThread = nil
 
 local function executeSelectedScript()
     local list = getSelectedList()
@@ -1378,6 +1383,9 @@ local function startAutoCountdown()
     return true
 end
 
+-- ============================================
+-- BOTÃO AUTO
+-- ============================================
 autoBtn.MouseButton1Click:Connect(function()
     savedData.autoEnabled = not savedData.autoEnabled
     
@@ -1428,6 +1436,9 @@ autoBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
+-- ============================================
+-- BOTÃO LIMPAR
+-- ============================================
 clearBtn.MouseButton1Click:Connect(function()
     autoRunning = false
     if autoTimerThread then
@@ -1483,6 +1494,9 @@ clearBtn.MouseButton1Click:Connect(function()
     end)
 end)
 
+-- ============================================
+-- FUNÇÃO EXECUTAR SCRIPT (com fechamento automático)
+-- ============================================
 local executando = false
 
 local function runScript(scriptData)
@@ -1505,6 +1519,9 @@ local function runScript(scriptData)
     return true
 end
 
+-- ============================================
+-- BOTÃO EXECUTAR (✅ FECHA AUTOMATICAMENTE)
+-- ============================================
 execBtn.MouseButton1Click:Connect(function()
     if executando then
         if statusLabel and statusLabel.Parent then
@@ -1532,8 +1549,12 @@ execBtn.MouseButton1Click:Connect(function()
             break
         end
     end
+    
+    -- Se for manutenção/update, mostra aviso e fecha também
     if scriptData and (scriptData.isMaintenance or scriptData.status == "update") then
         scriptData.load()
+        task.wait(0.5)
+        if gui then gui:Destroy() end
         return
     end
     
@@ -1547,44 +1568,23 @@ execBtn.MouseButton1Click:Connect(function()
     execBtn.Text = "◉ EXECUTANDO..."
     execBtn.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
     if statusLabel and statusLabel.Parent then
-        statusLabel.Text = "⏳ Executando..."
+        statusLabel.Text = "▶ Executando " .. (scriptData and scriptData.name or "script") .. "..."
         statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
     end
     
-    local total = #list
-    local atual = 0
-    local shouldAutoClose = false
-    
-    for _, id in ipairs(list) do
-        for _, data in ipairs(allList) do
-            if data.id == id then
-                atual = atual + 1
-                if statusLabel and statusLabel.Parent then
-                    statusLabel.Text = "▶ [" .. atual .. "/" .. total .. "] " .. data.name
-                end
-                
-                if data.autoClose then
-                    shouldAutoClose = true
-                end
-                
-                runScript(data)
-                wait(1.5)
-            end
-        end
+    -- Executa o script
+    if scriptData then
+        runScript(scriptData)
     end
     
-    if statusLabel and statusLabel.Parent then
-        statusLabel.Text = "✅ Concluído!"
-        statusLabel.TextColor3 = Color3.fromRGB(50, 255, 50)
-    end
-    execBtn.Text = "✓ FINALIZADO"
-    execBtn.BackgroundColor3 = Color3.fromRGB(50, 160, 50)
-    executando = false
-    
-    wait(1)
+    -- ✅ FECHA IMEDIATAMENTE após executar
+    task.wait(0.3)
     if gui then gui:Destroy() end
 end)
 
+-- ============================================
+-- AUTO EXECUTE AO INICIAR (se estava ativado)
+-- ============================================
 if savedData.autoEnabled and #getSelectedList() > 0 then
     local scriptId = getSelectedList()[1]
     local scriptData = nil
@@ -1606,3 +1606,4 @@ print("📱 Modo Mobile: " .. (isMobile and "ATIVADO" or "DESATIVADO"))
 print("🎮 Jogo atual: " .. currentGame.name .. " (ID: " .. currentGame.id .. ")")
 print("📜 " .. #scripts .. " scripts + " .. #devScripts .. " scripts do dev")
 print("🔁 Auto Execute: " .. (savedData.autoEnabled and "ON" or "OFF"))
+print("✅ Fechamento automático após executar: ATIVADO")
