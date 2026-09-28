@@ -11,11 +11,11 @@ repeat wait() until game:IsLoaded()
 local UserInputService = game:GetService("UserInputService")
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
--- Configurações de tamanho adaptáveis
+-- Configurações de tamanho adaptáveis (AJUSTADAS PARA CABER MELHOR NO MOBILE)
 local MENU_WIDTH = isMobile and 340 or 420
 local MENU_HEIGHT = isMobile and 480 or 620
-local ROW_HEIGHT = isMobile and 30 or 34
-local ROW_SPACING = isMobile and 34 or 38
+local ROW_HEIGHT = isMobile and 26 or 34   -- Reduzido para caber mais linhas
+local ROW_SPACING = isMobile and 28 or 38  -- Reduzido para caber mais linhas
 
 -- ============================================
 -- DETECTOR DE JOGO
@@ -153,7 +153,7 @@ local function showMaintenanceNotice(scriptName, reason)
 end
 
 -- ============================================
--- LISTA DE SCRIPTS POR JOGO
+-- LISTA DE SCRIPTS POR JOGO (COMPLETA)
 -- ============================================
 local scripts = {
     -- ===== BLOX FRUITS =====
@@ -196,7 +196,7 @@ local scripts = {
         key = false, 
         desc = "ComandoGame • Atualizado",
         load = 'loadstring(game:HttpGet("https://github.com/ComandoGame/ComandoGame/raw/ComandoGame/Hunt%20hub.lua"))()',
-        autoClose = true  -- Fecha o menu após executar
+        autoClose = true
     },
     { 
         id = 7, 
@@ -483,7 +483,7 @@ end)
 -- ============================================
 -- INFO DO JOGO E JOGADOR
 -- ============================================
-local infoHeight = isMobile and 50 or 60
+local infoHeight = isMobile and 55 or 60
 local infoFrame = Instance.new("Frame")
 infoFrame.Size = UDim2.new(1, -16, 0, infoHeight)
 infoFrame.Position = UDim2.new(0, 8, 0, isMobile and 46 or 52)
@@ -497,7 +497,7 @@ infoCorner.CornerRadius = UDim.new(0, 8)
 infoCorner.Parent = infoFrame
 
 local nomeLabel = Instance.new("TextLabel")
-nomeLabel.Size = UDim2.new(0.5, -10, 0, 16)
+nomeLabel.Size = UDim2.new(0.5, -10, 0, 14)
 nomeLabel.Position = UDim2.new(0, 10, 0, 3)
 nomeLabel.BackgroundTransparency = 1
 nomeLabel.Text = "👤 " .. player.Name
@@ -508,8 +508,8 @@ nomeLabel.TextXAlignment = Enum.TextXAlignment.Left
 nomeLabel.Parent = infoFrame
 
 local levelLabel = Instance.new("TextLabel")
-levelLabel.Size = UDim2.new(0.5, -10, 0, 16)
-levelLabel.Position = UDim2.new(0, 10, 0, isMobile and 20 or 22)
+levelLabel.Size = UDim2.new(0.5, -10, 0, 14)
+levelLabel.Position = UDim2.new(0, 10, 0, isMobile and 18 or 22)
 levelLabel.BackgroundTransparency = 1
 levelLabel.Text = "📊 Nível: 0"
 levelLabel.TextColor3 = Color3.fromRGB(200, 200, 255)
@@ -519,7 +519,7 @@ levelLabel.TextXAlignment = Enum.TextXAlignment.Left
 levelLabel.Parent = infoFrame
 
 local gameLabel = Instance.new("TextLabel")
-gameLabel.Size = UDim2.new(0.5, -10, 0, 16)
+gameLabel.Size = UDim2.new(0.5, -10, 0, 14)
 gameLabel.Position = UDim2.new(0.5, 5, 0, 3)
 gameLabel.BackgroundTransparency = 1
 gameLabel.Text = "🎮 " .. currentGame.name
@@ -530,8 +530,8 @@ gameLabel.TextXAlignment = Enum.TextXAlignment.Left
 gameLabel.Parent = infoFrame
 
 local gameIdLabel = Instance.new("TextLabel")
-gameIdLabel.Size = UDim2.new(0.5, -10, 0, 16)
-gameIdLabel.Position = UDim2.new(0.5, 5, 0, isMobile and 20 or 22)
+gameIdLabel.Size = UDim2.new(0.5, -10, 0, 14)
+gameIdLabel.Position = UDim2.new(0.5, 5, 0, isMobile and 18 or 22)
 gameIdLabel.BackgroundTransparency = 1
 gameIdLabel.Text = "🆔 " .. currentGame.id
 gameIdLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
@@ -541,8 +541,8 @@ gameIdLabel.TextXAlignment = Enum.TextXAlignment.Left
 gameIdLabel.Parent = infoFrame
 
 local statusGame = Instance.new("TextLabel")
-statusGame.Size = UDim2.new(0.5, -10, 0, 16)
-statusGame.Position = UDim2.new(0.5, 5, 0, isMobile and 37 or 41)
+statusGame.Size = UDim2.new(0.5, -10, 0, 14)
+statusGame.Position = UDim2.new(0.5, 5, 0, isMobile and 33 or 41)
 statusGame.BackgroundTransparency = 1
 statusGame.Text = "📜 " .. #availableScripts .. " disponíveis"
 statusGame.TextColor3 = Color3.fromRGB(255, 200, 100)
@@ -571,10 +571,10 @@ end)
 -- ============================================
 -- ÁREA DE SCRIPTS
 -- ============================================
-local scrollHeight = MENU_HEIGHT - (isMobile and 210 or 250)
+local scrollHeight = MENU_HEIGHT - (isMobile and 200 or 250)
 local scriptArea = Instance.new("ScrollingFrame")
 scriptArea.Size = UDim2.new(1, -16, 0, scrollHeight)
-scriptArea.Position = UDim2.new(0, 8, 0, isMobile and 100 or 120)
+scriptArea.Position = UDim2.new(0, 8, 0, isMobile and 105 or 120)
 scriptArea.BackgroundTransparency = 1
 scriptArea.ScrollBarThickness = 4
 scriptArea.ScrollBarImageColor3 = Color3.fromRGB(150, 50, 255)
@@ -628,7 +628,7 @@ for i, data in ipairs(scripts) do
     rowCorner.Parent = row
 
     local cb = Instance.new("TextButton")
-    cb.Size = UDim2.new(0, 20, 1, -4)
+    cb.Size = UDim2.new(0, 18, 1, -4)
     cb.Position = UDim2.new(0, 4, 0, 2)
     cb.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
     cb.BackgroundTransparency = 0.3
@@ -719,8 +719,8 @@ for i, data in ipairs(scripts) do
     end
     
     local nameLbl = Instance.new("TextLabel")
-    nameLbl.Size = UDim2.new(0.5, -30, 0, isMobile and 14 or 16)
-    nameLbl.Position = UDim2.new(0, 30, 0, 2)
+    nameLbl.Size = UDim2.new(0.5, -28, 0, isMobile and 12 or 16)
+    nameLbl.Position = UDim2.new(0, 26, 0, 1)
     nameLbl.BackgroundTransparency = 1
     nameLbl.Text = data.name
     if data.isMaintenance then
@@ -738,8 +738,8 @@ for i, data in ipairs(scripts) do
     nameLbl.Parent = row
 
     local gameScriptLbl = Instance.new("TextLabel")
-    gameScriptLbl.Size = UDim2.new(0.4, 0, 0, isMobile and 12 or 14)
-    gameScriptLbl.Position = UDim2.new(0, 30, 0, isMobile and 16 or 18)
+    gameScriptLbl.Size = UDim2.new(0.4, 0, 0, isMobile and 10 or 14)
+    gameScriptLbl.Position = UDim2.new(0, 26, 0, isMobile and 13 or 17)
     gameScriptLbl.BackgroundTransparency = 1
     if data.isMaintenance then
         gameScriptLbl.Text = "🔧 MANUTENÇÃO"
@@ -760,8 +760,8 @@ for i, data in ipairs(scripts) do
     gameScriptLbl.Parent = row
 
     local descLbl = Instance.new("TextLabel")
-    descLbl.Size = UDim2.new(0.3, 0, 0, isMobile and 12 or 14)
-    descLbl.Position = UDim2.new(0.45, 5, 0, isMobile and 16 or 18)
+    descLbl.Size = UDim2.new(0.4, 0, 0, isMobile and 10 or 14)
+    descLbl.Position = UDim2.new(0.45, 5, 0, isMobile and 13 or 17)
     descLbl.BackgroundTransparency = 1
     if data.isMaintenance then
         descLbl.Text = "⏳ Aguarde..."
@@ -782,8 +782,8 @@ for i, data in ipairs(scripts) do
     descLbl.Parent = row
 
     local keyLbl = Instance.new("TextLabel")
-    keyLbl.Size = UDim2.new(0, 20, 1, 0)
-    keyLbl.Position = UDim2.new(1, -25, 0, 0)
+    keyLbl.Size = UDim2.new(0, 18, 1, 0)
+    keyLbl.Position = UDim2.new(1, -22, 0, 0)
     keyLbl.BackgroundTransparency = 1
     keyLbl.Text = data.key and "🔑" or "✓"
     if data.isMaintenance then
@@ -805,10 +805,9 @@ scriptArea.CanvasSize = UDim2.new(0, 0, 0, #scripts * ROW_SPACING + 10)
 -- ============================================
 -- BOTÕES INFERIORES
 -- ============================================
-local btnY = isMobile and 383 or 403
 local btnFrame = Instance.new("Frame")
 btnFrame.Size = UDim2.new(1, -16, 0, 35)
-btnFrame.Position = UDim2.new(0, 8, 0, MENU_HEIGHT - (isMobile and 100 or 100))
+btnFrame.Position = UDim2.new(0, 8, 0, MENU_HEIGHT - 100)
 btnFrame.BackgroundTransparency = 1
 btnFrame.Parent = frame
 
@@ -867,7 +866,7 @@ clearCorner.Parent = clearBtn
 -- ============================================
 local autoFrame = Instance.new("Frame")
 autoFrame.Size = UDim2.new(1, -16, 0, 35)
-autoFrame.Position = UDim2.new(0, 8, 0, MENU_HEIGHT - (isMobile and 65 or 63))
+autoFrame.Position = UDim2.new(0, 8, 0, MENU_HEIGHT - 65)
 autoFrame.BackgroundTransparency = 1
 autoFrame.Parent = frame
 
@@ -889,7 +888,7 @@ autoCorner.Parent = autoBtn
 
 local statusLabel = Instance.new("TextLabel")
 statusLabel.Size = UDim2.new(1, -16, 0, 22)
-statusLabel.Position = UDim2.new(0, 8, 0, MENU_HEIGHT - (isMobile and 35 or 33))
+statusLabel.Position = UDim2.new(0, 8, 0, MENU_HEIGHT - 35)
 statusLabel.BackgroundColor3 = Color3.fromRGB(150, 50, 255)
 statusLabel.BackgroundTransparency = 0.85
 statusLabel.BorderSizePixel = 1
@@ -1283,7 +1282,6 @@ execBtn.MouseButton1Click:Connect(function()
     execBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
     executando = false
     
-    -- Fechar automaticamente se Hunt Hub foi executado
     wait(1)
     if gui then gui:Destroy() end
 end)
@@ -1361,7 +1359,6 @@ huntBtn.MouseButton1Click:Connect(function()
             wait(1)
             executando = false
             
-            -- Fechar o menu automaticamente após executar o Hunt Hub
             if gui then gui:Destroy() end
         end)
     else
