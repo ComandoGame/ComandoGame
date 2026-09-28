@@ -1,10 +1,9 @@
 --[[
     COMANDOGAME - MOBILE LITE
-    Versão: 33.1.0
+    Versão: 34.0.0
     Criador: Mk_gaming
-    OTIMIZADO PARA REDMI 13C
-    - Controle de resolução REMOVIDO (não funciona)
-    - Mantém Stutter Fixer + Low End Device + Memory Optimizer
+    + Hermanos Hub (Auto Bounty)
+    + CentHub (mantido com aviso)
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -102,8 +101,12 @@ local PlayerTeam = nil
 local Window = nil
 local CurrentTarget = nil
 local CurrentHeight = 0
-local CentHubLoaded = false
 local FlyOriginalNoclip = false
+
+local ScriptsLoaded = {
+    CentHub = false,
+    HermanosHub = false,
+}
 
 local FPSMonitor = { Frames = 0, LastUpdate = tick(), CurrentFPS = 60 }
 
@@ -164,7 +167,7 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ============================================
--- LOW END DEVICE (GANHO REAL DE FPS)
+-- LOW END DEVICE
 -- ============================================
 
 local function ApplyLowEndDevice()
@@ -172,7 +175,6 @@ local function ApplyLowEndDevice()
     
     print("📱 Aplicando Modo Celular Fraco...")
     
-    -- Backup
     pcall(function()
         LowEndBackup.FOV = Camera.FieldOfView
         LowEndBackup.FogEnd = Lighting.FogEnd
@@ -183,14 +185,12 @@ local function ApplyLowEndDevice()
         LowEndBackup.Brightness = Lighting.Brightness
     end)
     
-    -- 1. REDUZIR FOV (menos coisas na tela = mais FPS)
     pcall(function()
         if Settings.LowEndDevice.ReduceFOV then
-            Camera.FieldOfView = 55  -- Padrão 70 → 55 (menos cena)
+            Camera.FieldOfView = 55
         end
     end)
     
-    -- 2. NÉVOA CURTA (esconde o que está longe = mais FPS)
     pcall(function()
         if Settings.LowEndDevice.ShortFogDistance then
             Lighting.FogEnd = 400
@@ -198,7 +198,6 @@ local function ApplyLowEndDevice()
         end
     end)
     
-    -- 3. ILUMINAÇÃO SIMPLES
     pcall(function()
         if Settings.LowEndDevice.SimpleLighting then
             Lighting.GlobalShadows = false
@@ -209,7 +208,6 @@ local function ApplyLowEndDevice()
         end
     end)
     
-    -- 4. REDUZIR FÍSICA
     pcall(function()
         if Settings.LowEndDevice.ReducePhysics then
             settings().Physics.AllowSleep = true
@@ -217,7 +215,6 @@ local function ApplyLowEndDevice()
         end
     end)
     
-    -- 5. GRÁFICOS MÍNIMOS (real, funciona)
     pcall(function()
         settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
         settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
@@ -242,7 +239,7 @@ local function RemoveLowEndDevice()
 end
 
 -- ============================================
--- STUTTER FIXER (REMOVE EM LOTES)
+-- STUTTER FIXER
 -- ============================================
 
 local function ProcessBatch(list, startIndex, batchSize)
@@ -1292,7 +1289,6 @@ local function CreateUI()
     
     local PerformanceTab = Window:CreateTab("⚡ Performance", 4483362458)
     
-    -- ===== STUTTER FIXER =====
     PerformanceTab:CreateSection("🔧 Stutter Fixer (Anti-Travamento)")
     
     PerformanceTab:CreateToggle({
@@ -1331,7 +1327,6 @@ local function CreateUI()
     PerformanceTab:CreateLabel("✅ Remove em LOTES (não trava)")
     PerformanceTab:CreateLabel("✅ Espera o jogo carregar primeiro")
     
-    -- ===== LOW END DEVICE =====
     PerformanceTab:CreateSection("📱 Modo Celular Fraco")
     
     PerformanceTab:CreateToggle({
@@ -1399,7 +1394,6 @@ local function CreateUI()
     
     PerformanceTab:CreateLabel("💡 FOV 55 + Névoa 400 = +20% FPS")
     
-    -- ===== MEMORY OPTIMIZER =====
     PerformanceTab:CreateSection("🧠 Memory Optimizer")
     
     PerformanceTab:CreateToggle({
@@ -1424,7 +1418,6 @@ local function CreateUI()
         Callback = function(v) Settings.MemoryOptimizer.MaxMemoryMB = v end
     })
     
-    -- ===== OTIMIZADOR INTERNET =====
     PerformanceTab:CreateSection("🌐 Otimizador de Internet")
     
     PerformanceTab:CreateToggle({
@@ -1440,7 +1433,6 @@ local function CreateUI()
         end
     })
     
-    -- ===== ESTATÍSTICAS =====
     PerformanceTab:CreateSection("📊 Estatísticas")
     
     local fpsLabel = PerformanceTab:CreateLabel("📊 FPS: 60")
@@ -1568,36 +1560,97 @@ local function CreateUI()
     
     local ScriptsTab = Window:CreateTab("📜 Scripts", 4483362458)
     
-    ScriptsTab:CreateSection("🎯 CentHub Bounty")
+    -- ===== CENTHUB (EM MANUTENÇÃO) =====
+    ScriptsTab:CreateSection("🎯 CentHub Bounty (🔧 MANUTENÇÃO)")
+    
+    ScriptsTab:CreateLabel("⚠️ CENTHUB ESTÁ EM MANUTENÇÃO")
+    ScriptsTab:CreateLabel("📌 Aguarde o desenvolvedor liberar")
+    ScriptsTab:CreateLabel("💡 Use o Hermanos Hub abaixo")
     
     ScriptsTab:CreateButton({
-        Name = "⚔️ Carregar CentHub Bounty",
+        Name = "⚠️ CentHub (EM MANUTENÇÃO)",
         Callback = function()
-            if CentHubLoaded then
-                Rayfield:Notify({Title = "CentHub", Content = "⚠️ Já carregado!", Duration = 3})
+            Rayfield:Notify({
+                Title = "🔧 CentHub em Manutenção",
+                Content = "O script está fora do ar! Use o Hermanos Hub.",
+                Duration = 5,
+                Image = 4483362458,
+            })
+        end
+    })
+    
+    ScriptsTab:CreateLabel("")
+    
+    -- ===== HERMANOS HUB (NOVO - AUTO BOUNTY) =====
+    ScriptsTab:CreateSection("⚔️ Hermanos Hub (Auto Bounty)")
+    
+    ScriptsTab:CreateLabel("🎯 Script de Auto Bounty Hunt")
+    ScriptsTab:CreateLabel("👤 Criador: hermanos-dev")
+    ScriptsTab:CreateLabel("🔗 GitHub: hermanos-hub")
+    ScriptsTab:CreateLabel("")
+    
+    ScriptsTab:CreateButton({
+        Name = "⚔️ Carregar Hermanos Hub (Auto Bounty)",
+        Callback = function()
+            if ScriptsLoaded.HermanosHub then
+                Rayfield:Notify({
+                    Title = "Hermanos Hub",
+                    Content = "⚠️ Já foi carregado!",
+                    Duration = 3,
+                })
                 return
             end
-            Rayfield:Notify({Title = "CentHub Bounty", Content = "⏳ Carregando...", Duration = 3})
+            
+            Rayfield:Notify({
+                Title = "Hermanos Hub",
+                Content = "⏳ Carregando Auto Bounty...",
+                Duration = 3,
+            })
+            
             spawn(function()
                 local ok, err = pcall(function()
-                    loadstring(game:HttpGet("https://raw.githubusercontent.com/JustParadozCode/CentuDox-Hub/refs/heads/main/CentuDox-Pvp.xyz"))()
+                    loadstring(game:HttpGet("https://raw.githubusercontent.com/hermanos-dev/hermanos-hub/refs/heads/main/Loader.lua"))()
                 end)
+                
                 if ok then
-                    CentHubLoaded = true
-                    Rayfield:Notify({Title = "CentHub Bounty", Content = "✅ Carregado!", Duration = 4})
+                    ScriptsLoaded.HermanosHub = true
+                    Rayfield:Notify({
+                        Title = "Hermanos Hub",
+                        Content = "✅ Auto Bounty carregado!",
+                        Duration = 4,
+                    })
+                    print("✅ Hermanos Hub carregado!")
                 else
-                    Rayfield:Notify({Title = "CentHub Bounty", Content = "❌ Erro", Duration = 5})
+                    Rayfield:Notify({
+                        Title = "Hermanos Hub",
+                        Content = "❌ Erro: " .. tostring(err):sub(1, 40),
+                        Duration = 5,
+                    })
+                    warn("❌ Erro Hermanos: " .. tostring(err))
                 end
             end)
         end
     })
+    
+    ScriptsTab:CreateLabel("💡 Clique para carregar Auto Bounty")
+    ScriptsTab:CreateLabel("⚠️ Pode demorar alguns segundos")
+    
+    -- ===== INFORMAÇÕES =====
+    ScriptsTab:CreateSection("📌 Informações")
+    
+    ScriptsTab:CreateLabel("🎯 Scripts de Bounty:")
+    ScriptsTab:CreateLabel("• Hermanos Hub ✅")
+    ScriptsTab:CreateLabel("• CentHub ⚠️ Manutenção")
+    ScriptsTab:CreateLabel("")
+    ScriptsTab:CreateLabel("💡 Dica: Use apenas 1 por vez")
+    ScriptsTab:CreateLabel("   para não conflitar")
 
     -- ============================================
     -- ABA: SOBRE
     -- ============================================
     
     local AboutTab = Window:CreateTab("ℹ️ Sobre", 4483362458)
-    AboutTab:CreateLabel("⚡ ComandoGame Mobile LITE v33.1")
+    AboutTab:CreateLabel("⚡ ComandoGame Mobile LITE v34.0")
     AboutTab:CreateLabel("👤 Criador: Mk_gaming")
     AboutTab:CreateLabel("📱 Para Redmi 13C")
     AboutTab:CreateLabel("")
@@ -1607,8 +1660,9 @@ local function CreateUI()
     AboutTab:CreateLabel("• Memory Optimizer")
     AboutTab:CreateLabel("• Otimizador de Internet")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("❌ REMOVIDO:")
-    AboutTab:CreateLabel("• Controle de Resolução (não funciona)")
+    AboutTab:CreateLabel("📜 SCRIPTS:")
+    AboutTab:CreateLabel("• Hermanos Hub ✅")
+    AboutTab:CreateLabel("• CentHub ⚠️ Manutenção")
     AboutTab:CreateLabel("")
     AboutTab:CreateLabel("💡 ORDEM DE ATIVAÇÃO:")
     AboutTab:CreateLabel("1. Stutter Fixer")
@@ -1621,14 +1675,13 @@ CreateUI()
 
 Rayfield:Notify({
     Title = "ComandoGame LITE",
-    Content = "⚡ v33.1 - Controle de resolução removido!",
+    Content = "⚡ v34.0 - Hermanos Hub + CentHub (manutenção)!",
     Duration = 5,
 })
 
-print("✅ ComandoGame Mobile LITE v33.1 carregado!")
-print("❌ Controle de Resolução REMOVIDO (não funciona)")
-print("✅ Mantidas apenas opções que funcionam:")
-print("   🔧 Stutter Fixer")
-print("   📱 Low End Device")
-print("   🧠 Memory Optimizer")
-print("   🌐 Otimizador Internet")
+print("✅ ComandoGame Mobile LITE v34.0 carregado!")
+print("📜 SCRIPTS DISPONÍVEIS:")
+print("   ⚔️ Hermanos Hub (Auto Bounty) ✅")
+print("   ⚠️ CentHub (Manutenção)")
+print("")
+print("💡 Use o Hermanos Hub para Auto Bounty!")
