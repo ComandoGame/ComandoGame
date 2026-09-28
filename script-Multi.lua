@@ -12,10 +12,10 @@ local UserInputService = game:GetService("UserInputService")
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 -- Configurações de tamanho adaptáveis (AJUSTADAS PARA CABER MELHOR NO MOBILE)
-local MENU_WIDTH = isMobile and 340 or 420
-local MENU_HEIGHT = isMobile and 480 or 620
-local ROW_HEIGHT = isMobile and 26 or 34   -- Reduzido para caber mais linhas
-local ROW_SPACING = isMobile and 28 or 38  -- Reduzido para caber mais linhas
+local MENU_WIDTH = isMobile and 300 or 420    -- Largura reduzida para 300 no mobile
+local MENU_HEIGHT = isMobile and 500 or 620   -- Altura aumentada para 500 no mobile
+local ROW_HEIGHT = isMobile and 26 or 34      -- Altura das linhas
+local ROW_SPACING = isMobile and 28 or 38     -- Espaçamento entre linhas
 
 -- ============================================
 -- DETECTOR DE JOGO
@@ -481,7 +481,7 @@ closeBtn.MouseButton1Click:Connect(function()
 end)
 
 -- ============================================
--- INFO DO JOGO E JOGADOR
+-- INFO DO JOGO E JOGADOR (MANTIDO INTACTO)
 -- ============================================
 local infoHeight = isMobile and 55 or 60
 local infoFrame = Instance.new("Frame")
@@ -569,7 +569,7 @@ task.spawn(function()
 end)
 
 -- ============================================
--- ÁREA DE SCRIPTS
+-- ÁREA DE SCRIPTS (COM ROLAGEM)
 -- ============================================
 local scrollHeight = MENU_HEIGHT - (isMobile and 200 or 250)
 local scriptArea = Instance.new("ScrollingFrame")
@@ -578,6 +578,7 @@ scriptArea.Position = UDim2.new(0, 8, 0, isMobile and 105 or 120)
 scriptArea.BackgroundTransparency = 1
 scriptArea.ScrollBarThickness = 4
 scriptArea.ScrollBarImageColor3 = Color3.fromRGB(150, 50, 255)
+scriptArea.CanvasSize = UDim2.new(0, 0, 0, #scripts * ROW_SPACING + 10)
 scriptArea.Parent = frame
 
 local selecionados = {}
@@ -627,6 +628,7 @@ for i, data in ipairs(scripts) do
     rowCorner.CornerRadius = UDim.new(0, 6)
     rowCorner.Parent = row
 
+    -- Checkbox ajustado
     local cb = Instance.new("TextButton")
     cb.Size = UDim2.new(0, 18, 1, -4)
     cb.Position = UDim2.new(0, 4, 0, 2)
@@ -799,8 +801,6 @@ for i, data in ipairs(scripts) do
     keyLbl.Font = Enum.Font.Gotham
     keyLbl.Parent = row
 end
-
-scriptArea.CanvasSize = UDim2.new(0, 0, 0, #scripts * ROW_SPACING + 10)
 
 -- ============================================
 -- BOTÕES INFERIORES
