@@ -1,7 +1,6 @@
 -- Menu Multi-Jogos - Mk_gaming (Nukermode Style + ScriptsDoDev + Version)
 -- Detecta o jogo atual e libera apenas os scripts compatíveis
--- ✅ Botão individual vermelho em cada script
--- ✅ Fecha automaticamente após executar
+-- ✅ Layout corrigido + Botão individual vermelho
 
 local player = game.Players.LocalPlayer
 if not player then repeat wait() until game.Players.LocalPlayer end
@@ -13,12 +12,17 @@ repeat wait() until game:IsLoaded()
 local UserInputService = game:GetService("UserInputService")
 local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
--- Configurações de tamanho adaptáveis (estilo Nukermode)
-local MENU_WIDTH = isMobile and 360 or 620
+-- ============================================
+-- CONFIGURAÇÕES DE TAMANHO (ESTILO NUKERMODE)
+-- ============================================
+local MENU_WIDTH = isMobile and 370 or 620
 local MENU_HEIGHT = isMobile and 480 or 420
 local SIDEBAR_WIDTH = isMobile and 110 or 150
 local ROW_HEIGHT = isMobile and 30 or 34
 local ROW_SPACING = isMobile and 34 or 38
+local HEADER_HEIGHT = isMobile and 36 or 40
+local BOTTOM_BAR_HEIGHT = isMobile and 52 or 56
+local FOOTER_HEIGHT = isMobile and 78 or 88
 
 -- ============================================
 -- DETECTOR DE JOGO
@@ -32,9 +36,9 @@ local function detectGame()
         [4442272183] = "Blox Fruits (Teste)",
         [6284583030] = "Blox Fruits (Mobile)",
         [6403373529] = "Blox Fruits (Console)",
-        [85211729168715] = "Blox Fruits (Primeiro Mar)",
-        [79091703265657] = "Blox Fruits (Segundo Mar)",
-        [100117331123089] = "Blox Fruits (Terceiro Mar)",
+        [85211729168715] = "Blox Fruits (1º Mar)",
+        [79091703265657] = "Blox Fruits (2º Mar)",
+        [100117331123089] = "Blox Fruits (3º Mar)",
         [73902483975735] = "Blox Fruits (Masmorras)",
         [125686182205697] = "Blitz",
         [83469115925484] = "Blitz",
@@ -64,7 +68,7 @@ end
 local currentGame = detectGame()
 
 -- ============================================
--- FUNÇÃO PARA MOSTRAR AVISO DE MANUTENÇÃO
+-- FUNÇÃO AVISO DE UPDATE
 -- ============================================
 local function showMaintenanceNotice(scriptName, reason)
     local noticeGui = Instance.new("ScreenGui")
@@ -72,8 +76,8 @@ local function showMaintenanceNotice(scriptName, reason)
     noticeGui.ResetOnSpawn = false
     noticeGui.Parent = player.PlayerGui
     
-    local noticeWidth = isMobile and 300 or 400
-    local noticeHeight = isMobile and 170 or 200
+    local noticeWidth = isMobile and 290 or 400
+    local noticeHeight = isMobile and 160 or 200
     
     local noticeFrame = Instance.new("Frame")
     noticeFrame.Size = UDim2.new(0, noticeWidth, 0, noticeHeight)
@@ -89,8 +93,8 @@ local function showMaintenanceNotice(scriptName, reason)
     noticeCorner.Parent = noticeFrame
     
     local noticeIcon = Instance.new("TextLabel")
-    noticeIcon.Size = UDim2.new(0, 50, 0, 50)
-    noticeIcon.Position = UDim2.new(0.5, -25, 0, 10)
+    noticeIcon.Size = UDim2.new(0, 45, 0, 45)
+    noticeIcon.Position = UDim2.new(0.5, -22, 0, 8)
     noticeIcon.BackgroundTransparency = 1
     noticeIcon.Text = "🔧"
     noticeIcon.TextColor3 = Color3.fromRGB(255, 200, 50)
@@ -99,8 +103,8 @@ local function showMaintenanceNotice(scriptName, reason)
     noticeIcon.Parent = noticeFrame
     
     local noticeTitle = Instance.new("TextLabel")
-    noticeTitle.Size = UDim2.new(1, -40, 0, 25)
-    noticeTitle.Position = UDim2.new(0, 20, 0, 65)
+    noticeTitle.Size = UDim2.new(1, -30, 0, 22)
+    noticeTitle.Position = UDim2.new(0, 15, 0, 58)
     noticeTitle.BackgroundTransparency = 1
     noticeTitle.Text = "⚠️ SCRIPT EM UPDATE"
     noticeTitle.TextColor3 = Color3.fromRGB(255, 200, 50)
@@ -109,10 +113,10 @@ local function showMaintenanceNotice(scriptName, reason)
     noticeTitle.Parent = noticeFrame
     
     local noticeMsg = Instance.new("TextLabel")
-    noticeMsg.Size = UDim2.new(1, -40, 0, 22)
-    noticeMsg.Position = UDim2.new(0, 20, 0, 95)
+    noticeMsg.Size = UDim2.new(1, -30, 0, 20)
+    noticeMsg.Position = UDim2.new(0, 15, 0, 82)
     noticeMsg.BackgroundTransparency = 1
-    noticeMsg.Text = "🔄 " .. scriptName .. " está em update."
+    noticeMsg.Text = "🔄 " .. scriptName .. " em update."
     noticeMsg.TextColor3 = Color3.fromRGB(255, 255, 255)
     noticeMsg.TextScaled = true
     noticeMsg.Font = Enum.Font.Gotham
@@ -120,8 +124,8 @@ local function showMaintenanceNotice(scriptName, reason)
     
     if reason then
         local reasonLabel = Instance.new("TextLabel")
-        reasonLabel.Size = UDim2.new(1, -40, 0, 22)
-        reasonLabel.Position = UDim2.new(0, 20, 0, 118)
+        reasonLabel.Size = UDim2.new(1, -30, 0, 20)
+        reasonLabel.Position = UDim2.new(0, 15, 0, 104)
         reasonLabel.BackgroundTransparency = 1
         reasonLabel.Text = reason
         reasonLabel.TextColor3 = Color3.fromRGB(255, 200, 100)
@@ -131,8 +135,8 @@ local function showMaintenanceNotice(scriptName, reason)
     end
     
     local noticeClose = Instance.new("TextButton")
-    noticeClose.Size = UDim2.new(0, 100, 0, 28)
-    noticeClose.Position = UDim2.new(0.5, -50, 1, -38)
+    noticeClose.Size = UDim2.new(0, 100, 0, 26)
+    noticeClose.Position = UDim2.new(0.5, -50, 1, -34)
     noticeClose.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
     noticeClose.BackgroundTransparency = 0.2
     noticeClose.BorderSizePixel = 1
@@ -158,214 +162,83 @@ local function showMaintenanceNotice(scriptName, reason)
 end
 
 -- ============================================
--- LISTA DE SCRIPTS POR JOGO (PÁGINA: SCRIPTS)
+-- LISTA DE SCRIPTS (PÁGINA: Scripts)
 -- ============================================
 local scripts = {
-    { 
-        id = 1, 
-        name = "Quantum Onyx", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "✅ Atualizado • Key",
-        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/QuantumOnyx.lua"))()' 
-    },
-    { 
-        id = 2, 
-        name = "Hoho Hub", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "Auto Quest • Fly",
-        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/acsu123/HOHO_H/main/Loading_UI"))()' 
-    },
-    { 
-        id = 3, 
-        name = "Speed Hub X", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "ESP • Speed • PvP",
-        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/AhmadV99/Speed-Hub-X/main/Speed%20Hub%20X.lua"))()' 
-    },
-    { 
-        id = 4, 
-        name = "Cokka Hub", 
-        game = "Blox Fruits",
-        key = true, 
-        desc = "Mobile • Auto Farm",
-        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/UserDevEthical/Loadstring/main/CokkaHub.lua"))()' 
-    },
-    { 
-        id = 7, 
-        name = "Neva Hub", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "Auto Farm • Magnet",
-        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/VEZ2/NEVAHUB/main/2"))()' 
-    },
-    { 
-        id = 14, 
-        name = "Hermanos Hub", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "PVP • FARM",
-        load = function()
-            local script_mode = "FARM"
-            loadstring(game:HttpGet("https://raw.githubusercontent.com/hermanos-dev/hermanos-hub/refs/heads/main/Loader.lua"))()
-        end
-    },
-    { 
-        id = 15, 
-        name = "Night Hub", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "Auto Farm • Hop",
-        load = 'loadstring(game:HttpGet("https://github.com/WhiteX1208/Scripts/blob/main/HopScript.luau?raw=true"))()' 
-    },
-    { 
-        id = 16, 
-        name = "Teddy Hub", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "Auto Farm • Quest",
-        load = 'repeat task.wait() until game:IsLoaded() and game:GetService("Players") and game.Players.LocalPlayer and game.Players.LocalPlayer:FindFirstChild("PlayerGui") loadstring(game:HttpGet("https://raw.githubusercontent.com/teddyhubdev/diepvy/refs/heads/main/TeddyHub.lua"))()' 
-    },
-    { 
-        id = 17, 
-        name = "Redz Hub", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "Auto Farm • Raid",
-        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/UCT-hub/main/refs/heads/main/redz-v2"))()' 
-    },
-    { 
-        id = 19, 
-        name = "Tsuo Hub", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "⚠️ PESADO - FPS",
-        load = function()
-            showMaintenanceNotice("Tsuo Hub", "⚠️ Script pesado causa instabilidade de FPS.")
-        end,
-        isMaintenance = true
-    },
-    { 
-        id = 20, 
-        name = "Ruby Hub", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "Auto Farm • Sem Key",
-        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/bloxfruitsnokey/Redz/refs/heads/main/Ruby/script.lua"))()' 
-    },
-    { 
-        id = 21, 
-        name = "CentuDox PvP", 
-        game = "Blox Fruits",
-        key = false, 
-        desc = "⚔️ Bounty • PvP",
-        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/JustParadozCode/CentuDox-Hub/refs/heads/main/CentuDox-Pvp.xyz"))()' 
-    },
-    { 
-        id = 18, 
-        name = "Quantum Onyx (Dungeon)", 
-        game = "Blox Fruits (Masmorras)",
-        key = false, 
-        desc = "✅ Atualizado",
-        load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/QuantumOnyx.lua"))()' 
-    },
+    { id = 1, name = "Quantum Onyx", game = "Blox Fruits", key = false, desc = "✅ Key System",
+      load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/QuantumOnyx.lua"))()' },
+    { id = 2, name = "Hoho Hub", game = "Blox Fruits", key = false, desc = "Auto Quest • Fly",
+      load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/acsu123/HOHO_H/main/Loading_UI"))()' },
+    { id = 3, name = "Speed Hub X", game = "Blox Fruits", key = false, desc = "ESP • Speed • PvP",
+      load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/AhmadV99/Speed-Hub-X/main/Speed%20Hub%20X.lua"))()' },
+    { id = 4, name = "Cokka Hub", game = "Blox Fruits", key = true, desc = "Mobile • Farm",
+      load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/UserDevEthical/Loadstring/main/CokkaHub.lua"))()' },
+    { id = 7, name = "Neva Hub", game = "Blox Fruits", key = false, desc = "Farm • Magnet",
+      load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/VEZ2/NEVAHUB/main/2"))()' },
+    { id = 14, name = "Hermanos Hub", game = "Blox Fruits", key = false, desc = "PVP • FARM",
+      load = function()
+          local script_mode = "FARM"
+          loadstring(game:HttpGet("https://raw.githubusercontent.com/hermanos-dev/hermanos-hub/refs/heads/main/Loader.lua"))()
+      end },
+    { id = 15, name = "Night Hub", game = "Blox Fruits", key = false, desc = "Farm • Hop",
+      load = 'loadstring(game:HttpGet("https://github.com/WhiteX1208/Scripts/blob/main/HopScript.luau?raw=true"))()' },
+    { id = 16, name = "Teddy Hub", game = "Blox Fruits", key = false, desc = "Farm • Quest",
+      load = 'repeat task.wait() until game:IsLoaded() and game:GetService("Players") and game.Players.LocalPlayer and game.Players.LocalPlayer:FindFirstChild("PlayerGui") loadstring(game:HttpGet("https://raw.githubusercontent.com/teddyhubdev/diepvy/refs/heads/main/TeddyHub.lua"))()' },
+    { id = 17, name = "Redz Hub", game = "Blox Fruits", key = false, desc = "Farm • Raid",
+      load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/UCT-hub/main/refs/heads/main/redz-v2"))()' },
+    { id = 19, name = "Tsuo Hub", game = "Blox Fruits", key = false, desc = "⚠️ PESADO",
+      load = function() showMaintenanceNotice("Tsuo Hub", "⚠️ Script pesado causa lag.") end,
+      isMaintenance = true },
+    { id = 20, name = "Ruby Hub", game = "Blox Fruits", key = false, desc = "Farm • Sem Key",
+      load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/bloxfruitsnokey/Redz/refs/heads/main/Ruby/script.lua"))()' },
+    { id = 21, name = "CentuDox PvP", game = "Blox Fruits", key = false, desc = "⚔️ Bounty • PvP",
+      load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/JustParadozCode/CentuDox-Hub/refs/heads/main/CentuDox-Pvp.xyz"))()' },
+    { id = 18, name = "Quantum Onyx (Dungeon)", game = "Blox Fruits (Masmorras)", key = false, desc = "✅ Atualizado",
+      load = 'loadstring(game:HttpGet("https://raw.githubusercontent.com/flazhy/QuantumOnyx/refs/heads/main/QuantumOnyx.lua"))()' },
 }
 
 -- ============================================
 -- SCRIPTS DO DEV (PÁGINA: ScriptsDoDev)
 -- ============================================
 local devScripts = {
-    {
-        id = 100,
-        name = "Blitz ModMenu",
-        game = "Blitz",
-        desc = "🔄 EM UPDATE • Fly • Aimbot",
-        status = "update",
-        load = function()
-            showMaintenanceNotice("Blitz ModMenu", "🔄 Estamos atualizando para a nova versão do jogo.")
-        end
-    },
-    {
-        id = 101,
-        name = "Hunt Hub",
-        game = "Blox Fruits",
-        desc = "🎯 Hunt Script",
-        status = "stable",
-        isHuntHub = true,
-        load = 'loadstring(game:HttpGet("https://github.com/ComandoGame/ComandoGame/raw/ComandoGame/Hunt%20hub.lua"))()',
-        autoClose = true
-    },
-    {
-        id = 102,
-        name = "Horror Elevador",
-        game = "Horror Elevador",
-        desc = "🔄 EM UPDATE • GodMode",
-        status = "update",
-        load = function()
-            showMaintenanceNotice("Horror Elevador", "🔄 Estamos atualizando para a nova versão do jogo.")
-        end
-    },
-    {
-        id = 103,
-        name = "Knockback Battles",
-        game = "Knockback Battles",
-        desc = "🔄 EM UPDATE • Em breve",
-        status = "update",
-        load = function()
-            showMaintenanceNotice("Knockback Battles", "🔄 Estamos desenvolvendo este script.")
-        end
-    },
-    {
-        id = 104,
-        name = "Mk Admin Panel",
-        game = "Universal",
-        desc = "🛠️ Painel admin",
-        status = "beta",
-        load = function()
-            print("Mk Admin Panel carregado!")
-        end
-    },
-    {
-        id = 105,
-        name = "Mk Auto Farm Pro",
-        game = "Universal",
-        desc = "🌾 Farm otimizado",
-        status = "stable",
-        load = function()
-            print("Mk Auto Farm Pro carregado!")
-        end
-    },
+    { id = 100, name = "Blitz ModMenu", game = "Blitz", desc = "🔄 EM UPDATE • Fly", status = "update",
+      load = function() showMaintenanceNotice("Blitz ModMenu", "🔄 Atualizando para a nova versão.") end },
+    { id = 101, name = "Hunt Hub", game = "Blox Fruits", desc = "🎯 Hunt Script", status = "stable",
+      load = 'loadstring(game:HttpGet("https://github.com/ComandoGame/ComandoGame/raw/ComandoGame/Hunt%20hub.lua"))()',
+      autoClose = true },
+    { id = 102, name = "Horror Elevador", game = "Horror Elevador", desc = "🔄 EM UPDATE • GodMode", status = "update",
+      load = function() showMaintenanceNotice("Horror Elevador", "🔄 Atualizando para a nova versão.") end },
+    { id = 103, name = "Knockback Battles", game = "Knockback Battles", desc = "🔄 EM UPDATE", status = "update",
+      load = function() showMaintenanceNotice("Knockback Battles", "🔄 Desenvolvendo este script.") end },
+    { id = 104, name = "Mk Admin Panel", game = "Universal", desc = "🛠️ Painel admin", status = "beta",
+      load = function() print("Mk Admin Panel carregado!") end },
+    { id = 105, name = "Mk Auto Farm Pro", game = "Universal", desc = "🌾 Farm otimizado", status = "stable",
+      load = function() print("Mk Auto Farm Pro carregado!") end },
 }
 
 -- ============================================
--- FILTRAR SCRIPTS POR JOGO ATUAL
+-- FILTRAR SCRIPTS
 -- ============================================
 local function getAvailableScripts()
     local available = {}
     
     if currentGame.isBloxFruitsDungeon then
-        for _, script in ipairs(scripts) do
-            if script.id == 18 then
-                table.insert(available, script)
-            end
+        for _, s in ipairs(scripts) do
+            if s.id == 18 then table.insert(available, s) end
         end
         return available
     end
     
     if currentGame.isBloxFruits then
-        for _, script in ipairs(scripts) do
-            if script.game == "Blox Fruits" then
-                table.insert(available, script)
-            end
+        for _, s in ipairs(scripts) do
+            if s.game == "Blox Fruits" then table.insert(available, s) end
         end
         return available
     end
     
-    for _, script in ipairs(scripts) do
-        if script.game == currentGame.name or script.game == "Universal" then
-            table.insert(available, script)
+    for _, s in ipairs(scripts) do
+        if s.game == currentGame.name or s.game == "Universal" then
+            table.insert(available, s)
         end
     end
     return available
@@ -374,13 +247,9 @@ end
 local availableScripts = getAvailableScripts()
 
 -- ============================================
--- CARREGAR CONFIGURAÇÃO SALVA
+-- CONFIGURAÇÃO SALVA
 -- ============================================
-local savedData = {
-    autoScriptId = nil,
-    autoEnabled = false
-}
-
+local savedData = { autoScriptId = nil, autoEnabled = false }
 pcall(function()
     local data = getfenv()._G.BloxFruitsMenuData
     if data then
@@ -390,7 +259,7 @@ pcall(function()
 end)
 
 -- ============================================
--- CRIAÇÃO DA GUI (ESTILO NUKERMODE)
+-- GUI PRINCIPAL
 -- ============================================
 local gui = Instance.new("ScreenGui")
 gui.Name = "ScriptMenu"
@@ -414,9 +283,8 @@ corner.Parent = frame
 -- ============================================
 -- HEADER
 -- ============================================
-local headerHeight = isMobile and 34 or 38
 local header = Instance.new("Frame")
-header.Size = UDim2.new(1, 0, 0, headerHeight)
+header.Size = UDim2.new(1, 0, 0, HEADER_HEIGHT)
 header.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 header.BorderSizePixel = 0
 header.Parent = frame
@@ -444,7 +312,7 @@ title.Parent = header
 
 local closeBtn = Instance.new("TextButton")
 closeBtn.Size = UDim2.new(0, 22, 0, 22)
-closeBtn.Position = UDim2.new(1, -30, 0, (headerHeight - 22) / 2)
+closeBtn.Position = UDim2.new(1, -30, 0, (HEADER_HEIGHT - 22) / 2)
 closeBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 60)
 closeBtn.BackgroundTransparency = 0.1
 closeBtn.BorderSizePixel = 0
@@ -463,10 +331,9 @@ end)
 -- ============================================
 -- SIDEBAR
 -- ============================================
-local BOTTOM_BAR_HEIGHT = isMobile and 70 or 70
 local sidebar = Instance.new("Frame")
-sidebar.Size = UDim2.new(0, SIDEBAR_WIDTH, 1, -headerHeight - BOTTOM_BAR_HEIGHT)
-sidebar.Position = UDim2.new(0, 0, 0, headerHeight)
+sidebar.Size = UDim2.new(0, SIDEBAR_WIDTH, 1, -HEADER_HEIGHT - BOTTOM_BAR_HEIGHT)
+sidebar.Position = UDim2.new(0, 0, 0, HEADER_HEIGHT)
 sidebar.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 sidebar.BorderSizePixel = 0
 sidebar.Parent = frame
@@ -478,6 +345,7 @@ sidebarRightLine.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 sidebarRightLine.BorderSizePixel = 0
 sidebarRightLine.Parent = sidebar
 
+-- Botões de navegação
 local sidebarButtons = {}
 local pages = {
     { id = "scripts", label = "Scripts" },
@@ -513,10 +381,10 @@ for i, page in ipairs(pages) do
     table.insert(sidebarButtons, { button = btn, id = page.id })
 end
 
--- Rodapé da Sidebar
+-- Rodapé da Sidebar (info do player/jogo)
 local sidebarFooter = Instance.new("Frame")
-sidebarFooter.Size = UDim2.new(1, 0, 0, isMobile and 80 or 90)
-sidebarFooter.Position = UDim2.new(0, 0, 1, -(isMobile and 80 or 90))
+sidebarFooter.Size = UDim2.new(1, 0, 0, FOOTER_HEIGHT)
+sidebarFooter.Position = UDim2.new(0, 0, 1, -FOOTER_HEIGHT)
 sidebarFooter.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 sidebarFooter.BorderSizePixel = 0
 sidebarFooter.Parent = sidebar
@@ -529,8 +397,8 @@ footerLine.BorderSizePixel = 0
 footerLine.Parent = sidebarFooter
 
 local playerLabel = Instance.new("TextLabel")
-playerLabel.Size = UDim2.new(1, -12, 0, 16)
-playerLabel.Position = UDim2.new(0, 6, 0, 6)
+playerLabel.Size = UDim2.new(1, -12, 0, 15)
+playerLabel.Position = UDim2.new(0, 6, 0, 5)
 playerLabel.BackgroundTransparency = 1
 playerLabel.Text = "👤 " .. player.Name
 playerLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -541,7 +409,7 @@ playerLabel.Parent = sidebarFooter
 
 local gameLabel = Instance.new("TextLabel")
 gameLabel.Size = UDim2.new(1, -12, 0, 14)
-gameLabel.Position = UDim2.new(0, 6, 0, 24)
+gameLabel.Position = UDim2.new(0, 6, 0, 21)
 gameLabel.BackgroundTransparency = 1
 gameLabel.Text = "🎮 " .. currentGame.name
 gameLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
@@ -552,7 +420,7 @@ gameLabel.Parent = sidebarFooter
 
 local gameIdLabel = Instance.new("TextLabel")
 gameIdLabel.Size = UDim2.new(1, -12, 0, 12)
-gameIdLabel.Position = UDim2.new(0, 6, 0, 40)
+gameIdLabel.Position = UDim2.new(0, 6, 0, 37)
 gameIdLabel.BackgroundTransparency = 1
 gameIdLabel.Text = "🆔 " .. currentGame.id
 gameIdLabel.TextColor3 = Color3.fromRGB(160, 160, 160)
@@ -563,7 +431,7 @@ gameIdLabel.Parent = sidebarFooter
 
 local statusGame = Instance.new("TextLabel")
 statusGame.Size = UDim2.new(1, -12, 0, 12)
-statusGame.Position = UDim2.new(0, 6, 0, 56)
+statusGame.Position = UDim2.new(0, 6, 0, 53)
 statusGame.BackgroundTransparency = 1
 statusGame.Text = "📜 " .. #availableScripts .. " disp."
 statusGame.TextColor3 = Color3.fromRGB(255, 200, 100)
@@ -573,22 +441,27 @@ statusGame.TextXAlignment = Enum.TextXAlignment.Left
 statusGame.Parent = sidebarFooter
 
 -- ============================================
--- PAINEL DIREITO
+-- PAINEL DIREITO (CONTEÚDO)
 -- ============================================
 local contentPanel = Instance.new("Frame")
-contentPanel.Size = UDim2.new(1, -SIDEBAR_WIDTH, 1, -headerHeight - BOTTOM_BAR_HEIGHT)
-contentPanel.Position = UDim2.new(0, SIDEBAR_WIDTH, 0, headerHeight)
+contentPanel.Size = UDim2.new(1, -SIDEBAR_WIDTH, 1, -HEADER_HEIGHT - BOTTOM_BAR_HEIGHT)
+contentPanel.Position = UDim2.new(0, SIDEBAR_WIDTH, 0, HEADER_HEIGHT)
 contentPanel.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 contentPanel.BorderSizePixel = 0
 contentPanel.Parent = frame
 
 -- ============================================
--- FUNÇÃO AUXILIAR: CRIAR BOTÃO EXECUTAR VERMELHO
+-- VARIÁVEIS GLOBAIS DE STATUS
 -- ============================================
-local function createRunButton(parent, data, isBlocked, isMaintenance, isDevMode)
+local statusLabel  -- declarado aqui, criado depois na bottomBar
+
+-- ============================================
+-- FUNÇÃO CRIAR BOTÃO VERMELHO INDIVIDUAL
+-- ============================================
+local function createRunButton(parent, data, isBlocked, isUpdate, isDevMode)
     local runOneBtn = Instance.new("TextButton")
-    runOneBtn.Size = UDim2.new(0, 32, 1, -6)
-    runOneBtn.Position = UDim2.new(1, -36, 0, 3)
+    runOneBtn.Size = UDim2.new(0, 30, 1, -6)
+    runOneBtn.Position = UDim2.new(1, -34, 0, 3)
     runOneBtn.BackgroundColor3 = Color3.fromRGB(200, 40, 50)
     runOneBtn.BackgroundTransparency = 0.1
     runOneBtn.BorderSizePixel = 1
@@ -598,10 +471,9 @@ local function createRunButton(parent, data, isBlocked, isMaintenance, isDevMode
     runOneBtn.TextScaled = true
     runOneBtn.Font = Enum.Font.GothamBold
     runOneBtn.Parent = parent
-    local runOneCorner = Instance.new("UICorner")
-    runOneCorner.CornerRadius = UDim.new(0, 5)
-    runOneCorner.Parent = runOneCorner and runOneCorner or runOneBtn
-    runOneCorner.Parent = runOneBtn
+    local btnCorner = Instance.new("UICorner")
+    btnCorner.CornerRadius = UDim.new(0, 5)
+    btnCorner.Parent = runOneBtn
     
     if isBlocked then
         runOneBtn.BackgroundColor3 = Color3.fromRGB(80, 40, 40)
@@ -614,18 +486,18 @@ local function createRunButton(parent, data, isBlocked, isMaintenance, isDevMode
     runOneBtn.MouseButton1Click:Connect(function()
         if isBlocked then
             if statusLabel and statusLabel.Parent then
-                statusLabel.Text = "🔒 " .. data.name .. " bloqueado!"
+                statusLabel.Text = "🔒 Bloqueado!"
                 statusLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
             end
             return
         end
         
-        if isMaintenance or (isDevMode and data.status == "update") then
+        if isUpdate then
             data.load()
             return
         end
         
-        autoRunning = false
+        if autoRunning then autoRunning = false end
         if autoTimerThread then
             coroutine.close(autoTimerThread)
             autoTimerThread = nil
@@ -635,7 +507,7 @@ local function createRunButton(parent, data, isBlocked, isMaintenance, isDevMode
         runOneBtn.BackgroundColor3 = Color3.fromRGB(255, 200, 50)
         
         if statusLabel and statusLabel.Parent then
-            statusLabel.Text = "▶ Executando " .. data.name .. "..."
+            statusLabel.Text = "▶ " .. data.name
             statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
         end
         
@@ -670,6 +542,7 @@ scriptScroll.Position = UDim2.new(0, 6, 0, 6)
 scriptScroll.BackgroundTransparency = 1
 scriptScroll.ScrollBarThickness = 4
 scriptScroll.ScrollBarImageColor3 = Color3.fromRGB(150, 100, 200)
+scriptScroll.CanvasSize = UDim2.new(0, 0, 0, #scripts * ROW_SPACING + 10)
 scriptScroll.Parent = scriptsPage
 
 local selecionados = {}
@@ -679,10 +552,7 @@ local linhas = {}
 for i, data in ipairs(scripts) do
     local isAvailable = false
     for _, avail in ipairs(availableScripts) do
-        if avail.id == data.id then
-            isAvailable = true
-            break
-        end
+        if avail.id == data.id then isAvailable = true; break end
     end
     
     local row = Instance.new("Frame")
@@ -691,30 +561,21 @@ for i, data in ipairs(scripts) do
     
     if data.isMaintenance then
         row.BackgroundColor3 = Color3.fromRGB(70, 55, 25)
-        row.BackgroundTransparency = 0.2
-        row.BorderColor3 = Color3.fromRGB(255, 200, 50)
-        row.BorderSizePixel = 1
     elseif data.id == 18 then
         row.BackgroundColor3 = Color3.fromRGB(40, 100, 40)
-        row.BackgroundTransparency = 0.2
-        row.BorderColor3 = Color3.fromRGB(100, 255, 100)
-        row.BorderSizePixel = 1
     elseif isAvailable then
         row.BackgroundColor3 = data.key and Color3.fromRGB(150, 90, 40) or Color3.fromRGB(35, 35, 42)
-        row.BackgroundTransparency = 0.2
-        row.BorderColor3 = data.key and Color3.fromRGB(255, 200, 100) or Color3.fromRGB(70, 70, 80)
     else
         row.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-        row.BackgroundTransparency = 0.3
-        row.BorderColor3 = Color3.fromRGB(60, 60, 60)
     end
+    row.BackgroundTransparency = 0.2
+    row.BorderColor3 = Color3.fromRGB(70, 70, 80)
     row.BorderSizePixel = 1
     row.Parent = scriptScroll
     local rowCorner = Instance.new("UICorner")
     rowCorner.CornerRadius = UDim.new(0, 5)
     rowCorner.Parent = row
 
-    -- Checkbox
     local cb = Instance.new("TextButton")
     cb.Size = UDim2.new(0, 20, 1, -4)
     cb.Position = UDim2.new(0, 4, 0, 2)
@@ -726,10 +587,6 @@ for i, data in ipairs(scripts) do
         cb.BorderColor3 = Color3.fromRGB(255, 200, 50)
         cb.Text = "🔧"
         cb.TextColor3 = Color3.fromRGB(255, 200, 50)
-    elseif data.id == 18 then
-        cb.BorderColor3 = Color3.fromRGB(100, 255, 100)
-        cb.Text = "☐"
-        cb.TextColor3 = Color3.fromRGB(255, 255, 255)
     elseif isAvailable then
         cb.BorderColor3 = Color3.fromRGB(150, 150, 200)
         cb.Text = "☐"
@@ -766,13 +623,10 @@ for i, data in ipairs(scripts) do
                         cb2.Text = "☐"
                         cb2.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
                         cb2.BorderColor3 = Color3.fromRGB(150, 150, 200)
-                    end
-                    if row2 and row2.row and row2.isAvailable and not row2.isMaintenance then
                         row2.row.BackgroundColor3 = row2.corBase
                     end
                 end
                 selecionados = {}
-                
                 table.insert(selecionados, data.id)
                 cb.Text = "☑"
                 cb.BackgroundColor3 = Color3.fromRGB(120, 60, 200)
@@ -782,25 +636,15 @@ for i, data in ipairs(scripts) do
             local count = #selecionados
             if statusLabel and statusLabel.Parent then
                 statusLabel.Text = count > 0 and "◆ " .. count .. " selecionado" or "◆ Nenhum selecionado"
-                statusLabel.TextColor3 = count > 0 and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(200, 200, 200)
+                statusLabel.TextColor3 = count > 0 and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(180, 180, 180)
             end
-            
-            pcall(function()
-                getfenv()._G.BloxFruitsMenuData = {
-                    autoScriptId = #selecionados > 0 and selecionados[1] or nil,
-                    autoEnabled = savedData.autoEnabled
-                }
-            end)
         end)
     else
         cb.MouseButton1Click:Connect(function()
-            if data.isMaintenance then
-                data.load()
-            end
+            if data.isMaintenance then data.load() end
         end)
     end
     
-    -- Nome
     local nameLbl = Instance.new("TextLabel")
     nameLbl.Size = UDim2.new(0.5, -80, 0, isMobile and 14 or 16)
     nameLbl.Position = UDim2.new(0, 30, 0, 1)
@@ -818,7 +662,6 @@ for i, data in ipairs(scripts) do
     nameLbl.TextXAlignment = Enum.TextXAlignment.Left
     nameLbl.Parent = row
 
-    -- Jogo
     local gameScriptLbl = Instance.new("TextLabel")
     gameScriptLbl.Size = UDim2.new(0.4, -80, 0, isMobile and 12 or 14)
     gameScriptLbl.Position = UDim2.new(0, 30, 0, isMobile and 15 or 17)
@@ -838,48 +681,29 @@ for i, data in ipairs(scripts) do
     gameScriptLbl.TextXAlignment = Enum.TextXAlignment.Left
     gameScriptLbl.Parent = row
 
-    -- Descrição
     local descLbl = Instance.new("TextLabel")
     descLbl.Size = UDim2.new(0.25, -40, 0, isMobile and 12 or 14)
     descLbl.Position = UDim2.new(0.5, 0, 0, isMobile and 15 or 17)
     descLbl.BackgroundTransparency = 1
-    if data.isMaintenance then
-        descLbl.Text = "⏳ Aguarde..."
-        descLbl.TextColor3 = Color3.fromRGB(255, 200, 100)
-    elseif data.id == 18 then
-        descLbl.Text = "✅ Atualizado"
-        descLbl.TextColor3 = Color3.fromRGB(100, 255, 100)
-    else
-        descLbl.Text = data.desc
-        descLbl.TextColor3 = isAvailable and Color3.fromRGB(160, 160, 180) or Color3.fromRGB(100, 100, 100)
-    end
+    descLbl.Text = data.desc
+    descLbl.TextColor3 = isAvailable and Color3.fromRGB(160, 160, 180) or Color3.fromRGB(100, 100, 100)
     descLbl.TextScaled = true
     descLbl.Font = Enum.Font.Gotham
     descLbl.TextXAlignment = Enum.TextXAlignment.Left
     descLbl.Parent = row
 
-    -- Key/check
     local keyLbl = Instance.new("TextLabel")
     keyLbl.Size = UDim2.new(0, 18, 1, 0)
     keyLbl.Position = UDim2.new(1, -52, 0, 0)
     keyLbl.BackgroundTransparency = 1
     keyLbl.Text = data.key and "🔑" or "✓"
-    if data.isMaintenance then
-        keyLbl.TextColor3 = Color3.fromRGB(255, 200, 50)
-    elseif data.id == 18 then
-        keyLbl.TextColor3 = Color3.fromRGB(100, 255, 100)
-    else
-        keyLbl.TextColor3 = isAvailable and (data.key and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(50, 255, 50)) or Color3.fromRGB(100, 100, 100)
-    end
+    keyLbl.TextColor3 = isAvailable and (data.key and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(50, 255, 50)) or Color3.fromRGB(100, 100, 100)
     keyLbl.TextScaled = true
     keyLbl.Font = Enum.Font.Gotham
     keyLbl.Parent = row
 
-    -- 🔴 BOTÃO EXECUTAR INDIVIDUAL
     createRunButton(row, data, (not isAvailable), data.isMaintenance, false)
 end
-
-scriptScroll.CanvasSize = UDim2.new(0, 0, 0, #scripts * ROW_SPACING + 10)
 
 -- ============================================
 -- PÁGINA 2: SCRIPTS DO DEV
@@ -897,6 +721,7 @@ devScroll.Position = UDim2.new(0, 6, 0, 6)
 devScroll.BackgroundTransparency = 1
 devScroll.ScrollBarThickness = 4
 devScroll.ScrollBarImageColor3 = Color3.fromRGB(150, 100, 200)
+devScroll.CanvasSize = UDim2.new(0, 0, 0, #devScripts * ROW_SPACING + 10)
 devScroll.Parent = devPage
 
 local devSelected = {}
@@ -910,21 +735,15 @@ for i, data in ipairs(devScripts) do
     
     if data.status == "update" then
         row.BackgroundColor3 = Color3.fromRGB(70, 55, 25)
-        row.BackgroundTransparency = 0.2
-        row.BorderColor3 = Color3.fromRGB(255, 200, 50)
     elseif data.status == "beta" then
         row.BackgroundColor3 = Color3.fromRGB(40, 60, 80)
-        row.BackgroundTransparency = 0.2
-        row.BorderColor3 = Color3.fromRGB(100, 180, 255)
     elseif data.status == "stable" then
         row.BackgroundColor3 = Color3.fromRGB(35, 50, 35)
-        row.BackgroundTransparency = 0.2
-        row.BorderColor3 = Color3.fromRGB(80, 200, 80)
     else
         row.BackgroundColor3 = Color3.fromRGB(35, 35, 42)
-        row.BackgroundTransparency = 0.2
-        row.BorderColor3 = Color3.fromRGB(70, 70, 80)
     end
+    row.BackgroundTransparency = 0.2
+    row.BorderColor3 = Color3.fromRGB(70, 70, 80)
     row.BorderSizePixel = 1
     row.Parent = devScroll
     local rowCorner = Instance.new("UICorner")
@@ -958,9 +777,7 @@ for i, data in ipairs(devScripts) do
     devLinhas[data.id] = {row = row, corBase = row.BackgroundColor3, status = data.status}
 
     if data.status == "update" then
-        cb.MouseButton1Click:Connect(function()
-            data.load()
-        end)
+        cb.MouseButton1Click:Connect(function() data.load() end)
     else
         cb.MouseButton1Click:Connect(function()
             local idx = table.find(devSelected, data.id)
@@ -982,7 +799,6 @@ for i, data in ipairs(devScripts) do
                     end
                 end
                 devSelected = {}
-                
                 table.insert(devSelected, data.id)
                 cb.Text = "☑"
                 cb.BackgroundColor3 = Color3.fromRGB(120, 60, 200)
@@ -993,7 +809,7 @@ for i, data in ipairs(devScripts) do
             if statusLabel and statusLabel.Parent then
                 local count = #devSelected
                 statusLabel.Text = count > 0 and "◆ " .. count .. " selecionado (Dev)" or "◆ Nenhum selecionado"
-                statusLabel.TextColor3 = count > 0 and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(200, 200, 200)
+                statusLabel.TextColor3 = count > 0 and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(180, 180, 180)
             end
         end)
     end
@@ -1063,11 +879,8 @@ for i, data in ipairs(devScripts) do
     typeLbl.Font = Enum.Font.Gotham
     typeLbl.Parent = row
 
-    -- 🔴 BOTÃO EXECUTAR INDIVIDUAL
-    createRunButton(row, data, false, false, true)
+    createRunButton(row, data, false, (data.status == "update"), true)
 end
-
-devScroll.CanvasSize = UDim2.new(0, 0, 0, #devScripts * ROW_SPACING + 10)
 
 -- ============================================
 -- PÁGINA 3: VERSION
@@ -1144,7 +957,7 @@ sep1.BackgroundColor3 = Color3.fromRGB(80, 50, 120)
 sep1.BorderSizePixel = 0
 sep1.Parent = versionContent
 
-makeVersionRow(65, "📌 Versão:", "v2.5 Nukermode", Color3.fromRGB(180, 120, 255))
+makeVersionRow(65, "📌 Versão:", "v3.0 Nukermode", Color3.fromRGB(180, 120, 255))
 makeVersionRow(90, "📅 Atualizado:", "2025", Color3.fromRGB(255, 255, 255))
 makeVersionRow(115, "🖥️ Plataforma:", isMobile and "📱 Mobile" or "💻 PC", Color3.fromRGB(100, 200, 255))
 
@@ -1265,9 +1078,11 @@ bottomTopLine.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
 bottomTopLine.BorderSizePixel = 0
 bottomTopLine.Parent = bottomBar
 
+local btnY = (BOTTOM_BAR_HEIGHT - 30) / 2
+
 local execBtn = Instance.new("TextButton")
-execBtn.Size = UDim2.new(0, isMobile and 95 or 110, 0, 32)
-execBtn.Position = UDim2.new(0, 8, 0, 6)
+execBtn.Size = UDim2.new(0, isMobile and 95 or 110, 0, 30)
+execBtn.Position = UDim2.new(0, 8, 0, btnY)
 execBtn.BackgroundColor3 = Color3.fromRGB(120, 60, 200)
 execBtn.BackgroundTransparency = 0.1
 execBtn.BorderSizePixel = 1
@@ -1282,8 +1097,8 @@ execCorner.CornerRadius = UDim.new(0, 6)
 execCorner.Parent = execBtn
 
 local clearBtn = Instance.new("TextButton")
-clearBtn.Size = UDim2.new(0, isMobile and 70 or 80, 0, 32)
-clearBtn.Position = UDim2.new(0, isMobile and 110 or 125, 0, 6)
+clearBtn.Size = UDim2.new(0, isMobile and 70 or 80, 0, 30)
+clearBtn.Position = UDim2.new(0, isMobile and 110 or 125, 0, btnY)
 clearBtn.BackgroundColor3 = Color3.fromRGB(80, 60, 100)
 clearBtn.BackgroundTransparency = 0.1
 clearBtn.BorderSizePixel = 1
@@ -1298,8 +1113,8 @@ clearCorner.CornerRadius = UDim.new(0, 6)
 clearCorner.Parent = clearBtn
 
 local autoBtn = Instance.new("TextButton")
-autoBtn.Size = UDim2.new(0, isMobile and 80 or 90, 0, 32)
-autoBtn.Position = UDim2.new(1, -(isMobile and 88 or 98), 0, 6)
+autoBtn.Size = UDim2.new(0, isMobile and 80 or 90, 0, 30)
+autoBtn.Position = UDim2.new(1, -(isMobile and 88 or 98), 0, btnY)
 autoBtn.BackgroundColor3 = savedData.autoEnabled and Color3.fromRGB(40, 160, 40) or Color3.fromRGB(70, 55, 90)
 autoBtn.BackgroundTransparency = 0.1
 autoBtn.BorderSizePixel = 1
@@ -1313,12 +1128,12 @@ local autoCorner = Instance.new("UICorner")
 autoCorner.CornerRadius = UDim.new(0, 6)
 autoCorner.Parent = autoBtn
 
--- Status label
-local statusLabel = Instance.new("TextLabel")
-statusLabel.Size = UDim2.new(1, -16, 0, 18)
-statusLabel.Position = UDim2.new(0, 8, 0, 42)
+-- Status label DENTRO da bottomBar (não atrapalha nada)
+statusLabel = Instance.new("TextLabel")
+statusLabel.Size = UDim2.new(1, -16, 0, 12)
+statusLabel.Position = UDim2.new(0, 8, 1, -13)
 statusLabel.BackgroundTransparency = 1
-statusLabel.Text = savedData.autoEnabled and "⏳ Auto Execute ATIVADO" or "◆ Nenhum script selecionado"
+statusLabel.Text = savedData.autoEnabled and "⏳ Auto ON" or "◆ Nenhum selecionado"
 statusLabel.TextColor3 = savedData.autoEnabled and Color3.fromRGB(100, 255, 100) or Color3.fromRGB(180, 180, 180)
 statusLabel.TextScaled = true
 statusLabel.Font = Enum.Font.Gotham
@@ -1329,16 +1144,12 @@ statusLabel.Parent = bottomBar
 -- FUNÇÕES AUXILIARES
 -- ============================================
 local function getSelectedList()
-    if currentPage == "devscripts" then
-        return devSelected
-    end
+    if currentPage == "devscripts" then return devSelected end
     return selecionados
 end
 
 local function getAllScriptsList()
-    if currentPage == "devscripts" then
-        return devScripts
-    end
+    if currentPage == "devscripts" then return devScripts end
     return scripts
 end
 
@@ -1355,12 +1166,8 @@ local function executeSelectedScript()
     local scriptId = list[1]
     local scriptData = nil
     for _, s in ipairs(getAllScriptsList()) do
-        if s.id == scriptId then
-            scriptData = s
-            break
-        end
+        if s.id == scriptId then scriptData = s; break end
     end
-    
     if not scriptData then return false end
     
     if scriptData.isMaintenance or scriptData.status == "update" then
@@ -1369,11 +1176,11 @@ local function executeSelectedScript()
     end
     
     if statusLabel and statusLabel.Parent then
-        statusLabel.Text = "▶ Executando " .. scriptData.name .. " (Auto)..."
+        statusLabel.Text = "▶ Auto: " .. scriptData.name
         statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
     end
     
-    local success, err = pcall(function()
+    local success = pcall(function()
         if type(scriptData.load) == "function" then
             scriptData.load()
         else
@@ -1382,16 +1189,9 @@ local function executeSelectedScript()
         end
     end)
     
-    if success then
-        if statusLabel and statusLabel.Parent then
-            statusLabel.Text = "✅ " .. scriptData.name .. " executado!"
-            statusLabel.TextColor3 = Color3.fromRGB(50, 255, 50)
-        end
-    else
-        if statusLabel and statusLabel.Parent then
-            statusLabel.Text = "❌ Erro: " .. tostring(err):sub(1, 40)
-            statusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
-        end
+    if statusLabel and statusLabel.Parent then
+        statusLabel.Text = success and ("✅ " .. scriptData.name .. " OK") or "❌ Erro ao executar"
+        statusLabel.TextColor3 = success and Color3.fromRGB(50, 255, 50) or Color3.fromRGB(255, 50, 50)
     end
     
     return success
@@ -1404,10 +1204,7 @@ local function startAutoCountdown()
     local scriptId = getSelectedList()[1]
     local scriptData = nil
     for _, s in ipairs(getAllScriptsList()) do
-        if s.id == scriptId then
-            scriptData = s
-            break
-        end
+        if s.id == scriptId then scriptData = s; break end
     end
     if not scriptData then autoRunning = false; return false end
     
@@ -1465,7 +1262,7 @@ autoBtn.MouseButton1Click:Connect(function()
         autoBtn.BackgroundColor3 = Color3.fromRGB(40, 160, 40)
         autoBtn.BorderColor3 = Color3.fromRGB(80, 255, 80)
         if statusLabel and statusLabel.Parent then
-            statusLabel.Text = "⏳ Auto Execute ATIVADO"
+            statusLabel.Text = "⏳ Auto ATIVADO"
             statusLabel.TextColor3 = Color3.fromRGB(100, 255, 100)
         end
         
@@ -1473,10 +1270,7 @@ autoBtn.MouseButton1Click:Connect(function()
             local scriptId = getSelectedList()[1]
             local scriptData = nil
             for _, s in ipairs(getAllScriptsList()) do
-                if s.id == scriptId then
-                    scriptData = s
-                    break
-                end
+                if s.id == scriptId then scriptData = s; break end
             end
             if scriptData and (scriptData.isMaintenance or scriptData.status == "update") then
                 scriptData.load()
@@ -1489,8 +1283,8 @@ autoBtn.MouseButton1Click:Connect(function()
         autoBtn.BackgroundColor3 = Color3.fromRGB(70, 55, 90)
         autoBtn.BorderColor3 = Color3.fromRGB(130, 90, 180)
         if statusLabel and statusLabel.Parent then
-            statusLabel.Text = "◆ Auto Execute DESATIVADO"
-            statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
+            statusLabel.Text = "◆ Auto DESATIVADO"
+            statusLabel.TextColor3 = Color3.fromRGB(180, 180, 180)
         end
         autoRunning = false
         if autoTimerThread then
@@ -1498,13 +1292,6 @@ autoBtn.MouseButton1Click:Connect(function()
             autoTimerThread = nil
         end
     end
-    
-    pcall(function()
-        getfenv()._G.BloxFruitsMenuData = {
-            autoScriptId = #getSelectedList() > 0 and getSelectedList()[1] or nil,
-            autoEnabled = savedData.autoEnabled
-        }
-    end)
 end)
 
 -- ============================================
@@ -1548,65 +1335,25 @@ clearBtn.MouseButton1Click:Connect(function()
     end
     
     if statusLabel and statusLabel.Parent then
-        if savedData.autoEnabled then
-            statusLabel.Text = "⏳ Auto: Aguardando seleção..."
-            statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
-        else
-            statusLabel.Text = "◆ Seleção limpa"
-            statusLabel.TextColor3 = Color3.fromRGB(200, 200, 200)
-        end
+        statusLabel.Text = savedData.autoEnabled and "⏳ Auto: Aguardando..." or "◆ Seleção limpa"
+        statusLabel.TextColor3 = savedData.autoEnabled and Color3.fromRGB(255, 200, 50) or Color3.fromRGB(180, 180, 180)
     end
-    
-    pcall(function()
-        getfenv()._G.BloxFruitsMenuData = {
-            autoScriptId = nil,
-            autoEnabled = savedData.autoEnabled
-        }
-    end)
 end)
-
--- ============================================
--- FUNÇÃO EXECUTAR SCRIPT
--- ============================================
-local executando = false
-
-local function runScript(scriptData)
-    if scriptData.isMaintenance or scriptData.status == "update" then
-        scriptData.load()
-        return false
-    end
-    
-    task.spawn(function()
-        pcall(function()
-            if type(scriptData.load) == "function" then
-                scriptData.load()
-            else
-                local func = loadstring(scriptData.load)
-                if func then func() end
-            end
-        end)
-    end)
-    
-    return true
-end
 
 -- ============================================
 -- BOTÃO EXECUTAR (barra inferior)
 -- ============================================
+local executando = false
+
 execBtn.MouseButton1Click:Connect(function()
-    if executando then
-        if statusLabel and statusLabel.Parent then
-            statusLabel.Text = "⏳ Aguarde..."
-        end
-        return
-    end
+    if executando then return end
     
     local list = getSelectedList()
     local allList = getAllScriptsList()
     
     if #list == 0 then
         if statusLabel and statusLabel.Parent then
-            statusLabel.Text = "⚠️ Nenhum script selecionado!"
+            statusLabel.Text = "⚠️ Nada selecionado!"
             statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
         end
         return
@@ -1615,10 +1362,7 @@ execBtn.MouseButton1Click:Connect(function()
     local scriptId = list[1]
     local scriptData = nil
     for _, s in ipairs(allList) do
-        if s.id == scriptId then
-            scriptData = s
-            break
-        end
+        if s.id == scriptId then scriptData = s; break end
     end
     
     if scriptData and (scriptData.isMaintenance or scriptData.status == "update") then
@@ -1638,12 +1382,21 @@ execBtn.MouseButton1Click:Connect(function()
     execBtn.Text = "◉ EXECUTANDO..."
     execBtn.BackgroundColor3 = Color3.fromRGB(200, 80, 80)
     if statusLabel and statusLabel.Parent then
-        statusLabel.Text = "▶ Executando " .. (scriptData and scriptData.name or "script") .. "..."
+        statusLabel.Text = "▶ " .. (scriptData and scriptData.name or "script")
         statusLabel.TextColor3 = Color3.fromRGB(255, 200, 50)
     end
     
     if scriptData then
-        runScript(scriptData)
+        task.spawn(function()
+            pcall(function()
+                if type(scriptData.load) == "function" then
+                    scriptData.load()
+                else
+                    local func = loadstring(scriptData.load)
+                    if func then func() end
+                end
+            end)
+        end)
     end
     
     task.wait(0.3)
@@ -1657,10 +1410,7 @@ if savedData.autoEnabled and #getSelectedList() > 0 then
     local scriptId = getSelectedList()[1]
     local scriptData = nil
     for _, s in ipairs(getAllScriptsList()) do
-        if s.id == scriptId then
-            scriptData = s
-            break
-        end
+        if s.id == scriptId then scriptData = s; break end
     end
     if scriptData and (scriptData.isMaintenance or scriptData.status == "update") then
         scriptData.load()
@@ -1669,8 +1419,8 @@ if savedData.autoEnabled and #getSelectedList() > 0 then
     end
 end
 
-print("✅ Menu Multi-Jogos carregado! (Mk_gaming) - Nukermode + Botão Individual")
+print("✅ Menu Multi-Jogos carregado! (Mk_gaming) - Nukermode v3.0")
 print("📱 Modo Mobile: " .. (isMobile and "ATIVADO" or "DESATIVADO"))
-print("🎮 Jogo atual: " .. currentGame.name .. " (ID: " .. currentGame.id .. ")")
-print("📜 " .. #scripts .. " scripts + " .. #devScripts .. " do dev")
-print("🔴 Botão individual vermelho ativado em cada script")
+print("🎮 Jogo: " .. currentGame.name .. " (" .. currentGame.id .. ")")
+print("📜 " .. #scripts .. " scripts + " .. #devScripts .. " dev")
+print("🔴 Botão individual vermelho: ATIVO")
