@@ -196,7 +196,7 @@ local scripts = {
         key = false, 
         desc = "ComandoGame • Atualizado",
         load = 'loadstring(game:HttpGet("https://github.com/ComandoGame/ComandoGame/raw/ComandoGame/Hunt%20hub.lua"))()',
-        autoClose = true
+        autoClose = true  -- Fecha o menu após executar
     },
     { 
         id = 7, 
@@ -1283,6 +1283,7 @@ execBtn.MouseButton1Click:Connect(function()
     execBtn.BackgroundColor3 = Color3.fromRGB(50, 200, 50)
     executando = false
     
+    -- Fechar automaticamente se Hunt Hub foi executado
     wait(1)
     if gui then gui:Destroy() end
 end)
@@ -1360,6 +1361,7 @@ huntBtn.MouseButton1Click:Connect(function()
             wait(1)
             executando = false
             
+            -- Fechar o menu automaticamente após executar o Hunt Hub
             if gui then gui:Destroy() end
         end)
     else
