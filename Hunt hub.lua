@@ -1,9 +1,11 @@
 --[[
     COMANDOGAME - MOBILE LITE
-    Versão: 34.0.0
+    Versão: 35.0.0
     Criador: Mk_gaming
-    + Hermanos Hub (Auto Bounty)
-    + CentHub (mantido com aviso)
+    LOW END DEVICE MELHORADO
+    - Sem FOV
+    - Sem Névoa
+    - Só: texturas, gráficos e renderização
 ]]
 
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
@@ -37,13 +39,37 @@ local Settings = {
     },
     ESP = { Enabled = false, MaxDistance = 100000 },
     NoFog = { Enabled = false },
+    -- LOW END DEVICE MELHORADO
     LowEndDevice = {
         Enabled = false,
-        SimpleLighting = true,
-        DisableShadows = true,
-        ReducePhysics = true,
-        ReduceFOV = true,
-        ShortFogDistance = true,
+        -- Texturas
+        RemoveTextures = true,        -- Remove TODAS as texturas
+        RemoveDecals = true,          -- Remove decals/adesivos
+        RemoveSurfaceAppearance = true, -- Remove aparência PBR
+        -- Gráficos
+        LowGraphicsLevel = true,      -- Gráficos nível 1
+        LowMeshDetail = true,         -- Detalhes de malhas mínimos
+        DisableShadows = true,        -- Sem sombras
+        DisablePostFX = true,         -- Sem efeitos pós-processamento
+        DisableParticles = true,      -- Sem partículas
+        DisableTrails = true,         -- Sem rastros
+        DisableSmoke = true,          -- Sem fumaça
+        DisableFire = true,           -- Sem fogo
+        DisableSparkles = true,       -- Sem brilhos
+        -- Renderização do mapa
+        ReduceRenderDistance = true,  -- Reduz distância de renderização
+        RenderDistance = 250,         -- 250 studs
+        CullDistantParts = true,      -- Remove partes distantes
+        CullInvisibleParts = true,    -- Remove partes invisíveis
+        ReduceMaterials = true,       -- Materiais simples
+        -- Proteção
+        KeepGround = true,            -- Mantém o chão
+        KeepTerrain = true,           -- Mantém o terreno
+        KeepImportant = true,         -- Mantém coisas importantes
+        -- Estatísticas
+        TotalRemoved = 0,
+        TotalCulled = 0,
+        IsRunning = false,
     },
     StutterFixer = {
         Enabled = false,
@@ -82,6 +108,29 @@ local Settings = {
 }
 
 -- ============================================
+-- LISTA DE OBJETOS PROTEGIDOS (NUNCA REMOVER)
+-- ============================================
+
+local PROTECTED_NAMES = {
+    "ground", "floor", "terrain", "baseplate", "island", "land",
+    "map", "world", "platform", "bridge", "path", "road",
+    "sea", "ocean", "water", "shore", "beach", "cliff",
+    "rock", "stone", "mountain", "hill", "sand", "dirt",
+    "brick", "part", "block", "wall", "house", "building",
+    "tree", "bush", "grass", "plant", "spawn", "portal",
+    "chest", "fruit", "sword", "gun", "shop", "npc",
+}
+
+local function IsProtected(obj)
+    if not obj or not obj.Name then return false end
+    local name = obj.Name:lower()
+    for _, protected in pairs(PROTECTED_NAMES) do
+        if name:find(protected) then return true end
+    end
+    return false
+end
+
+-- ============================================
 -- VARIÁVEIS
 -- ============================================
 
@@ -110,14 +159,13 @@ local ScriptsLoaded = {
 
 local FPSMonitor = { Frames = 0, LastUpdate = tick(), CurrentFPS = 60 }
 
+-- Backup para restaurar
 local LowEndBackup = {
-    FOV = nil,
-    FogEnd = nil,
-    FogStart = nil,
-    GlobalShadows = nil,
-    Ambient = nil,
-    OutdoorAmbient = nil,
-    Brightness = nil,
+    LightingData = {},
+    TexturesBackup = {},
+    TransparencyBackup = {},
+    RemovedObjects = {},
+    OriginalParent = {},
 }
 
 -- ============================================
@@ -167,75 +215,353 @@ RunService.RenderStepped:Connect(function()
 end)
 
 -- ============================================
--- LOW END DEVICE
+-- LOW END DEVICE MELHORADO (SEM FOV / SEM NÉVOA)
 -- ============================================
 
 local function ApplyLowEndDevice()
     if not Settings.LowEndDevice.Enabled then return end
+    if Settings.LowEndDevice.IsRunning then return end
+    
+    Settings.LowEndDevice.IsRunning = true
+    Settings.LowEndDevice.TotalRemoved = 0
+    Settings.LowEndDevice.TotalCulled = 0
     
     print("📱 Aplicando Modo Celular Fraco...")
     
+    -- ============================================
+    -- BACKUP DO LIGHTING
+    -- ============================================
     pcall(function()
-        LowEndBackup.FOV = Camera.FieldOfView
-        LowEndBackup.FogEnd = Lighting.FogEnd
-        LowEndBackup.FogStart = Lighting.FogStart
-        LowEndBackup.GlobalShadows = Lighting.GlobalShadows
-        LowEndBackup.Ambient = Lighting.Ambient
-        LowEndBackup.OutdoorAmbient = Lighting.OutdoorAmbient
-        LowEndBackup.Brightness = Lighting.Brightness
+        LowEndBackup.LightingData = {
+            GlobalShadows = Lighting.GlobalShadows,
+            Brightness = Lighting.Brightness,
+            Ambient = Lighting.Ambient,
+            OutdoorAmbient = Lighting.OutdoorAmbient,
+            ShadowSoftness = Lighting.ShadowSoftness,
+            Technology = Lighting.Technology,
+            EnvironmentDiffuseScale = Lighting.EnvironmentDiffuseScale,
+            EnvironmentSpecularScale = Lighting.EnvironmentSpecularScale,
+        }
     end)
     
+    -- ============================================
+    -- 1. ILUMINAÇÃO (SEM MEXER EM FOV/NÉVOA)
+    -- ============================================
     pcall(function()
-        if Settings.LowEndDevice.ReduceFOV then
-            Camera.FieldOfView = 55
-        end
-    end)
-    
-    pcall(function()
-        if Settings.LowEndDevice.ShortFogDistance then
-            Lighting.FogEnd = 400
-            Lighting.FogStart = 100
-        end
-    end)
-    
-    pcall(function()
-        if Settings.LowEndDevice.SimpleLighting then
+        if Settings.LowEndDevice.DisableShadows then
             Lighting.GlobalShadows = false
-            Lighting.Brightness = 1
-            Lighting.Ambient = Color3.fromRGB(150, 150, 150)
-            Lighting.OutdoorAmbient = Color3.fromRGB(150, 150, 150)
             Lighting.ShadowSoftness = 0
         end
-    end)
-    
-    pcall(function()
-        if Settings.LowEndDevice.ReducePhysics then
-            settings().Physics.AllowSleep = true
-            settings().Physics.PhysicsEnvironmentalThrottle = Enum.EnviromentalPhysicsThrottle.DefaultAuto
+        if Settings.LowEndDevice.DisablePostFX then
+            Lighting.EnvironmentDiffuseScale = 0
+            Lighting.EnvironmentSpecularScale = 0
         end
     end)
     
+    -- ============================================
+    -- 2. GRÁFICOS MÍNIMOS (REAL)
+    -- ============================================
     pcall(function()
-        settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
-        settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+        if Settings.LowEndDevice.LowGraphicsLevel then
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        end
+        if Settings.LowEndDevice.LowMeshDetail then
+            settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Level01
+        end
     end)
     
-    print("✅ Modo Celular Fraco ATIVADO!")
+    -- ============================================
+    -- 3. REMOVER TEXTURAS (TODAS)
+    -- ============================================
+    spawn(function()
+        pcall(function()
+            local count = 0
+            local batchCount = 0
+            
+            for _, obj in pairs(workspace:GetDescendants()) do
+                local isLocalChar = LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character)
+                if not isLocalChar then
+                    -- Decals
+                    if Settings.LowEndDevice.RemoveDecals then
+                        if obj:IsA("Decal") then
+                            LowEndBackup.TexturesBackup[obj] = obj.Texture
+                            obj.Texture = ""
+                            count = count + 1
+                        end
+                    end
+                    
+                    -- Texturas
+                    if Settings.LowEndDevice.RemoveTextures then
+                        if obj:IsA("Texture") then
+                            LowEndBackup.TexturesBackup[obj] = obj.Texture
+                            obj.Texture = ""
+                            count = count + 1
+                        end
+                    end
+                    
+                    -- SurfaceAppearance (PBR)
+                    if Settings.LowEndDevice.RemoveSurfaceAppearance then
+                        if obj:IsA("SurfaceAppearance") then
+                            LowEndBackup.OriginalParent[obj] = obj.Parent
+                            obj.Parent = nil
+                            table.insert(LowEndBackup.RemovedObjects, obj)
+                            count = count + 1
+                        end
+                    end
+                    
+                    -- MeshPart textures
+                    if Settings.LowEndDevice.RemoveTextures then
+                        if obj:IsA("MeshPart") then
+                            if obj.TextureID ~= "" then
+                                LowEndBackup.TexturesBackup[obj] = obj.TextureID
+                                obj.TextureID = ""
+                                count = count + 1
+                            end
+                        end
+                    end
+                    
+                    -- SpecialMesh
+                    if Settings.LowEndDevice.RemoveTextures then
+                        if obj:IsA("SpecialMesh") then
+                            if obj.TextureId ~= "" then
+                                LowEndBackup.TexturesBackup[obj] = obj.TextureId
+                                obj.TextureId = ""
+                                count = count + 1
+                            end
+                        end
+                    end
+                end
+                
+                -- Yield a cada 30 objetos
+                batchCount = batchCount + 1
+                if batchCount % 30 == 0 then
+                    task.wait()
+                end
+            end
+            
+            Settings.LowEndDevice.TotalRemoved = Settings.LowEndDevice.TotalRemoved + count
+        end)
+    end)
+    
+    -- ============================================
+    -- 4. REMOVER PARTÍCULAS E EFEITOS
+    -- ============================================
+    spawn(function()
+        pcall(function()
+            local count = 0
+            local batchCount = 0
+            
+            for _, obj in pairs(workspace:GetDescendants()) do
+                local isLocalChar = LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character)
+                if not isLocalChar then
+                    if Settings.LowEndDevice.DisableParticles then
+                        if obj:IsA("ParticleEmitter") then
+                            local n = obj.Name:lower()
+                            if not (n:match("damage") or n:match("hurt") or n:match("hit")) then
+                                obj.Enabled = false
+                                count = count + 1
+                            end
+                        end
+                    end
+                    
+                    if Settings.LowEndDevice.DisableTrails then
+                        if obj:IsA("Trail") then
+                            obj.Enabled = false
+                            count = count + 1
+                        end
+                    end
+                    
+                    if Settings.LowEndDevice.DisableSmoke then
+                        if obj:IsA("Smoke") then
+                            obj.Enabled = false
+                            count = count + 1
+                        end
+                    end
+                    
+                    if Settings.LowEndDevice.DisableFire then
+                        if obj:IsA("Fire") then
+                            obj.Enabled = false
+                            count = count + 1
+                        end
+                    end
+                    
+                    if Settings.LowEndDevice.DisableSparkles then
+                        if obj:IsA("Sparkles") then
+                            obj.Enabled = false
+                            count = count + 1
+                        end
+                    end
+                end
+                
+                batchCount = batchCount + 1
+                if batchCount % 30 == 0 then
+                    task.wait()
+                end
+            end
+            
+            Settings.LowEndDevice.TotalRemoved = Settings.LowEndDevice.TotalRemoved + count
+        end)
+    end)
+    
+    -- ============================================
+    -- 5. REDUZIR RENDERIZAÇÃO DO MAPA
+    -- ============================================
+    spawn(function()
+        pcall(function()
+            local localRoot = nil
+            if LocalPlayer.Character then
+                localRoot = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+            end
+            
+            if localRoot and Settings.LowEndDevice.CullDistantParts then
+                local count = 0
+                local batchCount = 0
+                local renderDistance = Settings.LowEndDevice.RenderDistance or 250
+                
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("BasePart") then
+                        -- Não remove coisas protegidas
+                        if not IsProtected(obj) then
+                            -- Não remove o personagem local
+                            local isLocalChar = LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character)
+                            if not isLocalChar then
+                                local dist = (obj.Position - localRoot.Position).Magnitude
+                                if dist > renderDistance then
+                                    -- Salva e torna invisível
+                                    if obj.Transparency < 1 then
+                                        LowEndBackup.TransparencyBackup[obj] = obj.Transparency
+                                        obj.Transparency = 1
+                                        obj.CanCollide = false
+                                        count = count + 1
+                                    end
+                                end
+                            end
+                        end
+                    end
+                    
+                    batchCount = batchCount + 1
+                    if batchCount % 30 == 0 then
+                        task.wait()
+                    end
+                end
+                
+                Settings.LowEndDevice.TotalCulled = count
+            end
+        end)
+    end)
+    
+    -- ============================================
+    -- 6. REDUZIR MATERIAIS (deixa simples)
+    -- ============================================
+    spawn(function()
+        pcall(function()
+            if Settings.LowEndDevice.ReduceMaterials then
+                local count = 0
+                local batchCount = 0
+                
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("BasePart") then
+                        if not IsProtected(obj) then
+                            -- Muda material para plástico (mais leve)
+                            pcall(function()
+                                obj.Material = Enum.Material.Plastic
+                            end)
+                            count = count + 1
+                        end
+                    end
+                    
+                    batchCount = batchCount + 1
+                    if batchCount % 50 == 0 then
+                        task.wait()
+                    end
+                end
+                
+                Settings.LowEndDevice.TotalRemoved = Settings.LowEndDevice.TotalRemoved + count
+            end
+        end)
+    end)
+    
+    Settings.LowEndDevice.IsRunning = false
+    
+    Rayfield:Notify({
+        Title = "📱 Low End Device",
+        Content = "✅ ATIVADO!\n📦 " .. Settings.LowEndDevice.TotalRemoved .. " removidos\n🗺️ " .. Settings.LowEndDevice.TotalCulled .. " culled",
+        Duration = 5,
+    })
+    
+    print("✅ Low End Device ATIVADO!")
+    print("📦 Removidos: " .. Settings.LowEndDevice.TotalRemoved)
+    print("🗺️ Culled: " .. Settings.LowEndDevice.TotalCulled)
 end
 
 local function RemoveLowEndDevice()
+    Settings.LowEndDevice.IsRunning = false
+    
+    -- Restaurar Lighting
     pcall(function()
-        if LowEndBackup.FOV then Camera.FieldOfView = LowEndBackup.FOV end
-        if LowEndBackup.FogEnd then Lighting.FogEnd = LowEndBackup.FogEnd end
-        if LowEndBackup.FogStart then Lighting.FogStart = LowEndBackup.FogStart end
-        if LowEndBackup.GlobalShadows ~= nil then Lighting.GlobalShadows = LowEndBackup.GlobalShadows end
-        if LowEndBackup.Ambient then Lighting.Ambient = LowEndBackup.Ambient end
-        if LowEndBackup.OutdoorAmbient then Lighting.OutdoorAmbient = LowEndBackup.OutdoorAmbient end
-        if LowEndBackup.Brightness then Lighting.Brightness = LowEndBackup.Brightness end
+        for prop, value in pairs(LowEndBackup.LightingData) do
+            Lighting[prop] = value
+        end
+    end)
+    
+    -- Restaurar Texturas
+    pcall(function()
+        for obj, texture in pairs(LowEndBackup.TexturesBackup) do
+            if obj and obj.Parent then
+                if obj:IsA("Decal") or obj:IsA("Texture") then
+                    obj.Texture = texture
+                elseif obj:IsA("MeshPart") then
+                    obj.TextureID = texture
+                elseif obj:IsA("SpecialMesh") then
+                    obj.TextureId = texture
+                end
+            end
+        end
+    end)
+    
+    -- Restaurar Transparência
+    pcall(function()
+        for obj, transparency in pairs(LowEndBackup.TransparencyBackup) do
+            if obj and obj.Parent then
+                obj.Transparency = transparency
+                obj.CanCollide = true
+            end
+        end
+    end)
+    
+    -- Restaurar objetos removidos
+    pcall(function()
+        for _, obj in pairs(LowEndBackup.RemovedObjects) do
+            if obj and obj.Parent == nil then
+                local op = LowEndBackup.OriginalParent[obj]
+                if op then obj.Parent = op end
+            end
+        end
+    end)
+    
+    -- Restaurar gráficos
+    pcall(function()
         settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
         settings().Rendering.MeshPartDetailLevel = Enum.MeshPartDetailLevel.Automatic
     end)
-    print("❌ Modo Celular Fraco DESATIVADO")
+    
+    -- Limpar backup
+    LowEndBackup.LightingData = {}
+    LowEndBackup.TexturesBackup = {}
+    LowEndBackup.TransparencyBackup = {}
+    LowEndBackup.RemovedObjects = {}
+    LowEndBackup.OriginalParent = {}
+    
+    Settings.LowEndDevice.TotalRemoved = 0
+    Settings.LowEndDevice.TotalCulled = 0
+    
+    Rayfield:Notify({
+        Title = "📱 Low End Device",
+        Content = "⏹️ DESATIVADO - Tudo restaurado",
+        Duration = 3,
+    })
+    
+    print("❌ Low End Device DESATIVADO")
 end
 
 -- ============================================
@@ -275,7 +601,7 @@ local function StartStutterFixer()
         pcall(function()
             for _, obj in pairs(workspace:GetDescendants()) do
                 local isLocalChar = LocalPlayer.Character and obj:IsDescendantOf(LocalPlayer.Character)
-                if not isLocalChar then
+                if not isLocalChar and not IsProtected(obj) then
                     for _, class in pairs(Settings.StutterFixer.PriorityList) do
                         if obj.ClassName == class then
                             table.insert(objectsToRemove, obj)
@@ -320,7 +646,7 @@ local function SmartClean()
                 pcall(function()
                     local count = 0
                     for _, obj in pairs(workspace:GetDescendants()) do
-                        if obj:IsA("MeshPart") then
+                        if obj:IsA("MeshPart") and not IsProtected(obj) then
                             local dist = (obj.Position - localRoot.Position).Magnitude
                             if dist > 400 and obj.TextureID ~= "" then obj.TextureID = "" end
                         end
@@ -1289,44 +1615,7 @@ local function CreateUI()
     
     local PerformanceTab = Window:CreateTab("⚡ Performance", 4483362458)
     
-    PerformanceTab:CreateSection("🔧 Stutter Fixer (Anti-Travamento)")
-    
-    PerformanceTab:CreateToggle({
-        Name = "🔧 Ativar Stutter Fixer",
-        CurrentValue = false,
-        Callback = function(v)
-            Settings.StutterFixer.Enabled = v
-            if v then
-                StartStutterFixer()
-                Rayfield:Notify({Title = "Stutter Fixer", Content = "🔧 Iniciando... (espera 5s)", Duration = 3})
-            else
-                Settings.StutterFixer.IsRunning = false
-                Rayfield:Notify({Title = "Stutter Fixer", Content = "⏹️ PARADO", Duration = 2})
-            end
-        end
-    })
-    
-    PerformanceTab:CreateSlider({
-        Name = "Aguardar antes de otimizar",
-        Range = {2, 15},
-        Increment = 1,
-        Suffix = "s",
-        CurrentValue = 5,
-        Callback = function(v) Settings.StutterFixer.WaitForLoadTime = v end
-    })
-    
-    PerformanceTab:CreateSlider({
-        Name = "Objetos por lote",
-        Range = {10, 50},
-        Increment = 5,
-        Suffix = "objetos",
-        CurrentValue = 30,
-        Callback = function(v) Settings.StutterFixer.RemovePerBatch = v end
-    })
-    
-    PerformanceTab:CreateLabel("✅ Remove em LOTES (não trava)")
-    PerformanceTab:CreateLabel("✅ Espera o jogo carregar primeiro")
-    
+    -- ===== LOW END DEVICE =====
     PerformanceTab:CreateSection("📱 Modo Celular Fraco")
     
     PerformanceTab:CreateToggle({
@@ -1336,64 +1625,174 @@ local function CreateUI()
             Settings.LowEndDevice.Enabled = v
             if v then
                 ApplyLowEndDevice()
-                Rayfield:Notify({Title = "Low End", Content = "📱 ATIVADO!", Duration = 3})
             else
                 RemoveLowEndDevice()
-                Rayfield:Notify({Title = "Low End", Content = "⏹️ DESATIVADO", Duration = 3})
             end
         end
     })
     
+    PerformanceTab:CreateSection("🎨 Remover Texturas")
+    
     PerformanceTab:CreateToggle({
-        Name = "Reduzir FOV (menos cena)",
+        Name = "Remover Texturas",
         CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.RemoveTextures = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Remover Decals",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.RemoveDecals = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Remover Aparência PBR",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.RemoveSurfaceAppearance = v end
+    })
+    
+    PerformanceTab:CreateSection("🎮 Gráficos")
+    
+    PerformanceTab:CreateToggle({
+        Name = "Gráficos Nível 1",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.LowGraphicsLevel = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Detalhes de Malhas Mínimos",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.LowMeshDetail = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Desativar Sombras",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.DisableShadows = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Desativar Efeitos Pós-Processamento",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.DisablePostFX = v end
+    })
+    
+    PerformanceTab:CreateSection("✨ Efeitos")
+    
+    PerformanceTab:CreateToggle({
+        Name = "Desativar Partículas",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.DisableParticles = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Desativar Rastros",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.DisableTrails = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Desativar Fumaça",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.DisableSmoke = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Desativar Fogo",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.DisableFire = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Desativar Brilhos",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.DisableSparkles = v end
+    })
+    
+    PerformanceTab:CreateSection("🗺️ Renderização do Mapa")
+    
+    PerformanceTab:CreateToggle({
+        Name = "Reduzir Render Distance",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.ReduceRenderDistance = v end
+    })
+    
+    PerformanceTab:CreateSlider({
+        Name = "Distância de Renderização",
+        Range = {100, 1000},
+        Increment = 50,
+        Suffix = "studs",
+        CurrentValue = 250,
         Callback = function(v) 
-            Settings.LowEndDevice.ReduceFOV = v
+            Settings.LowEndDevice.RenderDistance = v
             if Settings.LowEndDevice.Enabled then
-                Camera.FieldOfView = v and 55 or 70
+                Rayfield:Notify({
+                    Title = "📱 Low End",
+                    Content = "🗺️ Render: " .. v .. " studs (reative)",
+                    Duration = 3,
+                })
             end
         end
     })
     
     PerformanceTab:CreateToggle({
-        Name = "Névoa Curta (esconde o longe)",
+        Name = "Cull (esconder) Parts Distantes",
         CurrentValue = true,
-        Callback = function(v) 
-            Settings.LowEndDevice.ShortFogDistance = v
-            if Settings.LowEndDevice.Enabled then
-                if v then
-                    Lighting.FogEnd = 400
-                    Lighting.FogStart = 100
-                else
-                    Lighting.FogEnd = 100000
-                    Lighting.FogStart = 0
-                end
+        Callback = function(v) Settings.LowEndDevice.CullDistantParts = v end
+    })
+    
+    PerformanceTab:CreateToggle({
+        Name = "Reduzir Materiais",
+        CurrentValue = true,
+        Callback = function(v) Settings.LowEndDevice.ReduceMaterials = v end
+    })
+    
+    PerformanceTab:CreateSection("🛡️ Proteção")
+    
+    PerformanceTab:CreateLabel("✅ Chão, terreno e cenário são PROTEGIDOS")
+    PerformanceTab:CreateLabel("✅ Só remove texturas/efeitos, não estruturas")
+    
+    PerformanceTab:CreateSection("📊 Estatísticas")
+    
+    local fpsLabel = PerformanceTab:CreateLabel("📊 FPS: 60")
+    local removedLabel = PerformanceTab:CreateLabel("📦 Removidos: 0")
+    local culledLabel = PerformanceTab:CreateLabel("🗺️ Culled: 0")
+    
+    spawn(function()
+        while wait(1) do
+            if fpsLabel then
+                local fps = FPSMonitor.CurrentFPS
+                local color = fps >= 45 and "✅" or fps >= 30 and "⚠️" or "🚨"
+                fpsLabel:Set(color .. " FPS: " .. fps)
+            end
+            if removedLabel then
+                removedLabel:Set("📦 Removidos: " .. Settings.LowEndDevice.TotalRemoved)
+            end
+            if culledLabel then
+                culledLabel:Set("🗺️ Culled: " .. Settings.LowEndDevice.TotalCulled)
+            end
+        end
+    end)
+    
+    -- ===== STUTTER FIXER =====
+    PerformanceTab:CreateSection("🔧 Stutter Fixer")
+    
+    PerformanceTab:CreateToggle({
+        Name = "🔧 Ativar Stutter Fixer",
+        CurrentValue = false,
+        Callback = function(v)
+            Settings.StutterFixer.Enabled = v
+            if v then
+                StartStutterFixer()
+                Rayfield:Notify({Title = "Stutter Fixer", Content = "🔧 Iniciando...", Duration = 3})
+            else
+                Settings.StutterFixer.IsRunning = false
+                Rayfield:Notify({Title = "Stutter Fixer", Content = "⏹️ PARADO", Duration = 2})
             end
         end
     })
     
-    PerformanceTab:CreateToggle({
-        Name = "Iluminação Simples",
-        CurrentValue = true,
-        Callback = function(v) 
-            Settings.LowEndDevice.SimpleLighting = v
-            if Settings.LowEndDevice.Enabled then
-                if v then
-                    Lighting.GlobalShadows = false
-                    Lighting.Brightness = 1
-                end
-            end
-        end
-    })
-    
-    PerformanceTab:CreateToggle({
-        Name = "Reduzir Física",
-        CurrentValue = true,
-        Callback = function(v) Settings.LowEndDevice.ReducePhysics = v end
-    })
-    
-    PerformanceTab:CreateLabel("💡 FOV 55 + Névoa 400 = +20% FPS")
-    
+    -- ===== MEMORY OPTIMIZER =====
     PerformanceTab:CreateSection("🧠 Memory Optimizer")
     
     PerformanceTab:CreateToggle({
@@ -1409,15 +1808,9 @@ local function CreateUI()
         end
     })
     
-    PerformanceTab:CreateSlider({
-        Name = "RAM Máxima",
-        Range = {1000, 2500},
-        Increment = 100,
-        Suffix = "MB",
-        CurrentValue = 1500,
-        Callback = function(v) Settings.MemoryOptimizer.MaxMemoryMB = v end
-    })
+    PerformanceTab:CreateSlider({Name = "RAM Máxima", Range = {1000, 2500}, Increment = 100, Suffix = "MB", CurrentValue = 1500, Callback = function(v) Settings.MemoryOptimizer.MaxMemoryMB = v end})
     
+    -- ===== OTIMIZADOR INTERNET =====
     PerformanceTab:CreateSection("🌐 Otimizador de Internet")
     
     PerformanceTab:CreateToggle({
@@ -1432,36 +1825,6 @@ local function CreateUI()
             end
         end
     })
-    
-    PerformanceTab:CreateSection("📊 Estatísticas")
-    
-    local fpsLabel = PerformanceTab:CreateLabel("📊 FPS: 60")
-    local memCurrentLabel = PerformanceTab:CreateLabel("💾 RAM: 0 MB")
-    local pLabel = PerformanceTab:CreateLabel("📡 Ping: 0 ms")
-    local removedLabel = PerformanceTab:CreateLabel("🔧 Removidos: 0")
-    
-    spawn(function()
-        while wait(1) do
-            if fpsLabel then
-                local fps = FPSMonitor.CurrentFPS
-                local color = fps >= 45 and "✅" or fps >= 30 and "⚠️" or "🚨"
-                fpsLabel:Set(color .. " FPS: " .. fps)
-            end
-            if memCurrentLabel then
-                local mem = GetMemoryMB()
-                local color = mem < 1000 and "✅" or mem < 1500 and "⚠️" or "🚨"
-                memCurrentLabel:Set(color .. " RAM: " .. mem .. " MB")
-            end
-            if pLabel then
-                local ping = GetPing()
-                local color = ping < 100 and "✅" or ping < 200 and "⚠️" or "🚨"
-                pLabel:Set(color .. " Ping: " .. ping .. " ms")
-            end
-            if removedLabel then
-                removedLabel:Set("🔧 Removidos: " .. Settings.StutterFixer.TotalRemoved)
-            end
-        end
-    end)
 
     -- ============================================
     -- ABA: PLAYER
@@ -1560,11 +1923,10 @@ local function CreateUI()
     
     local ScriptsTab = Window:CreateTab("📜 Scripts", 4483362458)
     
-    -- ===== CENTHUB (EM MANUTENÇÃO) =====
+    -- CentHub (Manutenção)
     ScriptsTab:CreateSection("🎯 CentHub Bounty (🔧 MANUTENÇÃO)")
     
     ScriptsTab:CreateLabel("⚠️ CENTHUB ESTÁ EM MANUTENÇÃO")
-    ScriptsTab:CreateLabel("📌 Aguarde o desenvolvedor liberar")
     ScriptsTab:CreateLabel("💡 Use o Hermanos Hub abaixo")
     
     ScriptsTab:CreateButton({
@@ -1572,40 +1934,29 @@ local function CreateUI()
         Callback = function()
             Rayfield:Notify({
                 Title = "🔧 CentHub em Manutenção",
-                Content = "O script está fora do ar! Use o Hermanos Hub.",
+                Content = "Use o Hermanos Hub!",
                 Duration = 5,
-                Image = 4483362458,
             })
         end
     })
     
     ScriptsTab:CreateLabel("")
     
-    -- ===== HERMANOS HUB (NOVO - AUTO BOUNTY) =====
+    -- Hermanos Hub
     ScriptsTab:CreateSection("⚔️ Hermanos Hub (Auto Bounty)")
     
     ScriptsTab:CreateLabel("🎯 Script de Auto Bounty Hunt")
     ScriptsTab:CreateLabel("👤 Criador: hermanos-dev")
-    ScriptsTab:CreateLabel("🔗 GitHub: hermanos-hub")
-    ScriptsTab:CreateLabel("")
     
     ScriptsTab:CreateButton({
-        Name = "⚔️ Carregar Hermanos Hub (Auto Bounty)",
+        Name = "⚔️ Carregar Hermanos Hub",
         Callback = function()
             if ScriptsLoaded.HermanosHub then
-                Rayfield:Notify({
-                    Title = "Hermanos Hub",
-                    Content = "⚠️ Já foi carregado!",
-                    Duration = 3,
-                })
+                Rayfield:Notify({Title = "Hermanos Hub", Content = "⚠️ Já carregado!", Duration = 3})
                 return
             end
             
-            Rayfield:Notify({
-                Title = "Hermanos Hub",
-                Content = "⏳ Carregando Auto Bounty...",
-                Duration = 3,
-            })
+            Rayfield:Notify({Title = "Hermanos Hub", Content = "⏳ Carregando...", Duration = 3})
             
             spawn(function()
                 local ok, err = pcall(function()
@@ -1614,74 +1965,48 @@ local function CreateUI()
                 
                 if ok then
                     ScriptsLoaded.HermanosHub = true
-                    Rayfield:Notify({
-                        Title = "Hermanos Hub",
-                        Content = "✅ Auto Bounty carregado!",
-                        Duration = 4,
-                    })
-                    print("✅ Hermanos Hub carregado!")
+                    Rayfield:Notify({Title = "Hermanos Hub", Content = "✅ Auto Bounty carregado!", Duration = 4})
                 else
-                    Rayfield:Notify({
-                        Title = "Hermanos Hub",
-                        Content = "❌ Erro: " .. tostring(err):sub(1, 40),
-                        Duration = 5,
-                    })
-                    warn("❌ Erro Hermanos: " .. tostring(err))
+                    Rayfield:Notify({Title = "Hermanos Hub", Content = "❌ Erro", Duration = 5})
                 end
             end)
         end
     })
-    
-    ScriptsTab:CreateLabel("💡 Clique para carregar Auto Bounty")
-    ScriptsTab:CreateLabel("⚠️ Pode demorar alguns segundos")
-    
-    -- ===== INFORMAÇÕES =====
-    ScriptsTab:CreateSection("📌 Informações")
-    
-    ScriptsTab:CreateLabel("🎯 Scripts de Bounty:")
-    ScriptsTab:CreateLabel("• Hermanos Hub ✅")
-    ScriptsTab:CreateLabel("• CentHub ⚠️ Manutenção")
-    ScriptsTab:CreateLabel("")
-    ScriptsTab:CreateLabel("💡 Dica: Use apenas 1 por vez")
-    ScriptsTab:CreateLabel("   para não conflitar")
 
     -- ============================================
     -- ABA: SOBRE
     -- ============================================
     
     local AboutTab = Window:CreateTab("ℹ️ Sobre", 4483362458)
-    AboutTab:CreateLabel("⚡ ComandoGame Mobile LITE v34.0")
+    AboutTab:CreateLabel("⚡ ComandoGame Mobile LITE v35.0")
     AboutTab:CreateLabel("👤 Criador: Mk_gaming")
-    AboutTab:CreateLabel("📱 Para Redmi 13C")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("✅ O QUE FUNCIONA:")
-    AboutTab:CreateLabel("• Stutter Fixer (remove em lotes)")
-    AboutTab:CreateLabel("• Low End Device (FOV + Névoa)")
-    AboutTab:CreateLabel("• Memory Optimizer")
-    AboutTab:CreateLabel("• Otimizador de Internet")
+    AboutTab:CreateLabel("📱 LOW END DEVICE:")
+    AboutTab:CreateLabel("✅ Remove Texturas")
+    AboutTab:CreateLabel("✅ Reduz Gráficos")
+    AboutTab:CreateLabel("✅ Reduz Renderização do Mapa")
+    AboutTab:CreateLabel("✅ Remove Partículas/Efeitos")
+    AboutTab:CreateLabel("❌ SEM FOV")
+    AboutTab:CreateLabel("❌ SEM Névoa")
     AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("📜 SCRIPTS:")
-    AboutTab:CreateLabel("• Hermanos Hub ✅")
-    AboutTab:CreateLabel("• CentHub ⚠️ Manutenção")
-    AboutTab:CreateLabel("")
-    AboutTab:CreateLabel("💡 ORDEM DE ATIVAÇÃO:")
-    AboutTab:CreateLabel("1. Stutter Fixer")
-    AboutTab:CreateLabel("2. Modo Celular Fraco")
-    AboutTab:CreateLabel("3. Memory Optimizer")
-    AboutTab:CreateLabel("4. Otimizador Internet")
+    AboutTab:CreateLabel("🛡️ PROTEGIDO:")
+    AboutTab:CreateLabel("• Chão")
+    AboutTab:CreateLabel("• Terreno")
+    AboutTab:CreateLabel("• Cenário")
 end
 
 CreateUI()
 
 Rayfield:Notify({
     Title = "ComandoGame LITE",
-    Content = "⚡ v34.0 - Hermanos Hub + CentHub (manutenção)!",
+    Content = "⚡ v35.0 - Low End SEM FOV/Névoa!",
     Duration = 5,
 })
 
-print("✅ ComandoGame Mobile LITE v34.0 carregado!")
-print("📜 SCRIPTS DISPONÍVEIS:")
-print("   ⚔️ Hermanos Hub (Auto Bounty) ✅")
-print("   ⚠️ CentHub (Manutenção)")
-print("")
-print("💡 Use o Hermanos Hub para Auto Bounty!")
+print("✅ ComandoGame Mobile LITE v35.0 carregado!")
+print("📱 LOW END DEVICE:")
+print("   ✅ Remove texturas")
+print("   ✅ Reduz gráficos")
+print("   ✅ Reduz renderização")
+print("   ❌ SEM FOV")
+print("   ❌ SEM Névoa")
